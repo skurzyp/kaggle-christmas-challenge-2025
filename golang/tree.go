@@ -73,8 +73,29 @@ func (t *ChristmasTree) GetPolygon() *resolv.ConvexPolygon {
 }
 
 func (t *ChristmasTree) GetBoundingBox() (float64, float64, float64, float64) {
-	bounds := t.GetPolygon().Bounds()
-	return bounds.Min.X, bounds.Min.Y, bounds.Max.X, bounds.Max.Y
+	// Calculate bounding box from the actual orb polygon (same as used for intersection)
+	poly := t.GetOrbPolygon()
+	ring := poly[0]
+
+	minX, minY := math.MaxFloat64, math.MaxFloat64
+	maxX, maxY := -math.MaxFloat64, -math.MaxFloat64
+
+	for _, pt := range ring {
+		if pt[0] < minX {
+			minX = pt[0]
+		}
+		if pt[0] > maxX {
+			maxX = pt[0]
+		}
+		if pt[1] < minY {
+			minY = pt[1]
+		}
+		if pt[1] > maxY {
+			maxY = pt[1]
+		}
+	}
+
+	return minX, minY, maxX, maxY
 }
 
 // GetOrbPolygon returns an orb.Polygon representing the tree outline

@@ -3,6 +3,8 @@ package main
 import (
 	"math"
 	"math/rand"
+
+	"github.com/tidwall/rtree"
 )
 
 // generateWeightedAngle generates a random angle in DEGREES with distribution weighted by abs(sin(2*angle))
@@ -16,16 +18,6 @@ func generateWeightedAngle() float64 {
 	}
 }
 
-// checkCollisionWithAll checks if tree collides with any tree in the list
-func checkCollisionWithAll(tree *ChristmasTree, placedTrees []ChristmasTree) bool {
-	for i := range placedTrees {
-		if CheckCollision(tree, &placedTrees[i]) {
-			return true
-		}
-	}
-	return false
-}
-
 // initializeTrees builds a greedy packing of n trees
 func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTree, float64) {
 	if numTrees == 0 {
@@ -35,12 +27,21 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 	placedTrees := make([]ChristmasTree, len(existingTrees))
 	copy(placedTrees, existingTrees)
 
+	// Spatial Index for fast collision detection
+	tr := rtree.RTree{}
+	for i, t := range placedTrees {
+		minX, minY, maxX, maxY := t.GetBoundingBox()
+		tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, i)
+	}
+
 	numToAdd := numTrees - len(placedTrees)
 	if numToAdd > 0 {
 		// If starting from scratch, place first tree at origin
 		if len(placedTrees) == 0 {
 			t := ChristmasTree{ID: 0, X: 0, Y: 0, Angle: rand.Float64() * 360.0}
 			placedTrees = append(placedTrees, t)
+			minX, minY, maxX, maxY := t.GetBoundingBox()
+			tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, 0)
 			numToAdd--
 		}
 
@@ -72,8 +73,28 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 					treeToPlace.X = px
 					treeToPlace.Y = py
 
-					// Check collision with ALL placed trees (no spatial index)
-					isColliding := checkCollisionWithAll(&treeToPlace, placedTrees)
+					// Check collision using spatial index
+					candidateBoundsMinX, candidateBoundsMinY, candidateBoundsMaxX, candidateBoundsMaxY := treeToPlace.GetBoundingBox()
+
+					// Query RTree for potential collisions
+					possibleCollisions := []int{}
+					tr.Search(
+						[2]float64{candidateBoundsMinX, candidateBoundsMinY},
+						[2]float64{candidateBoundsMaxX, candidateBoundsMaxY},
+						func(min, max [2]float64, data interface{}) bool {
+							possibleCollisions = append(possibleCollisions, data.(int))
+							return true
+						},
+					)
+
+					// Check for actual collisions
+					isColliding := false
+					for _, otherIdx := range possibleCollisions {
+						if CheckCollision(&treeToPlace, &placedTrees[otherIdx]) {
+							isColliding = true
+							break
+						}
+					}
 
 					if isColliding {
 						collisionFound = true
@@ -94,8 +115,26 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 						treeToPlace.X = px
 						treeToPlace.Y = py
 
-						// Check collision with ALL placed trees
-						isColliding := checkCollisionWithAll(&treeToPlace, placedTrees)
+						// Check collision again
+						candidateBoundsMinX, candidateBoundsMinY, candidateBoundsMaxX, candidateBoundsMaxY := treeToPlace.GetBoundingBox()
+
+						possibleCollisions := []int{}
+						tr.Search(
+							[2]float64{candidateBoundsMinX, candidateBoundsMinY},
+							[2]float64{candidateBoundsMaxX, candidateBoundsMaxY},
+							func(min, max [2]float64, data interface{}) bool {
+								possibleCollisions = append(possibleCollisions, data.(int))
+								return true
+							},
+						)
+
+						isColliding := false
+						for _, otherIdx := range possibleCollisions {
+							if CheckCollision(&treeToPlace, &placedTrees[otherIdx]) {
+								isColliding = true
+								break
+							}
+						}
 
 						if !isColliding {
 							break
@@ -120,6 +159,8 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 				treeToPlace.X = bestX
 				treeToPlace.Y = bestY
 				placedTrees = append(placedTrees, treeToPlace)
+				minX, minY, maxX, maxY := treeToPlace.GetBoundingBox()
+				tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, newID)
 			}
 		}
 	}
