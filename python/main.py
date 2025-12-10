@@ -174,14 +174,17 @@ def plot_trees(num_trees: int, submission_path: str):
     plt.title(f'{num_trees} Trees: {side_length:.12f}')
     
     plt.tight_layout()
-    plt.savefig(f'trees_{num_trees}.png', dpi=150, bbox_inches='tight', facecolor='white')
-    print(f"Saved: trees_{num_trees}.png")
+    
+    # Save to results/images folder
+    output_path = f'../results/images/trees_{num_trees}.png'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight', facecolor='white')
+    print(f"Saved: {output_path}")
     plt.close()
 
 
 def main():
     """Main function to visualize sample submissions."""
-    submission_path = '../golang/sample_submission.csv'
+    submission_path = '../results/submissions/sample_submission.csv'
     
     # Visualize different tree counts
     tree_counts = [10, 50, 100, 150, 200]

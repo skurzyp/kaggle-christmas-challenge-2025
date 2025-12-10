@@ -1,4 +1,4 @@
-package main
+package tree
 
 import (
 	"math"
@@ -7,8 +7,8 @@ import (
 	"github.com/tidwall/rtree"
 )
 
-// generateWeightedAngle generates a random angle in DEGREES with distribution weighted by abs(sin(2*angle))
-func generateWeightedAngle() float64 {
+// GenerateWeightedAngle generates a random angle in DEGREES with distribution weighted by abs(sin(2*angle))
+func GenerateWeightedAngle() float64 {
 	for {
 		angleDeg := rand.Float64() * 360.0
 		angleRad := angleDeg * math.Pi / 180.0
@@ -18,8 +18,8 @@ func generateWeightedAngle() float64 {
 	}
 }
 
-// initializeTrees builds a greedy packing of n trees
-func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTree, float64) {
+// InitializeTrees builds a greedy packing of n trees
+func InitializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTree, float64) {
 	if numTrees == 0 {
 		return []ChristmasTree{}, 0
 	}
@@ -55,7 +55,7 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 
 			// Try 10 random starting attempts
 			for attempt := 0; attempt < 10; attempt++ {
-				angle := generateWeightedAngle()
+				angle := GenerateWeightedAngle()
 				angleRad := angle * math.Pi / 180.0
 				vx := math.Cos(angleRad)
 				vy := math.Sin(angleRad)
@@ -90,7 +90,7 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 					// Check for actual collisions
 					isColliding := false
 					for _, otherIdx := range possibleCollisions {
-						if CheckCollision(&treeToPlace, &placedTrees[otherIdx]) {
+						if treeToPlace.Intersect(&placedTrees[otherIdx]) {
 							isColliding = true
 							break
 						}
@@ -130,7 +130,7 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 
 						isColliding := false
 						for _, otherIdx := range possibleCollisions {
-							if CheckCollision(&treeToPlace, &placedTrees[otherIdx]) {
+							if treeToPlace.Intersect(&placedTrees[otherIdx]) {
 								isColliding = true
 								break
 							}
@@ -190,9 +190,4 @@ func initializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 	sideLength := math.Max(width, height)
 
 	return placedTrees, sideLength
-}
-
-// CheckCollision checks if two trees collide
-func CheckCollision(tree1, tree2 *ChristmasTree) bool {
-	return tree1.Intersect(tree2)
 }

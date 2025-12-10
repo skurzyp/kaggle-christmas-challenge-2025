@@ -1,11 +1,12 @@
-package main
+// Package tree implements Christmas tree geometry and packing algorithms
+// for the Kaggle Tree Packing Challenge.
+package tree
 
 import (
 	"math"
 
 	"github.com/engelsjk/polygol"
 	"github.com/paulmach/orb"
-	"github.com/solarlune/resolv"
 )
 
 // ChristmasTree represents a single tree with position and rotation
@@ -20,58 +21,7 @@ func deg2rad(deg float64) float64 {
 	return deg * math.Pi / 180.0
 }
 
-// GetPolygon returns a single polygon representing the entire tree outline
-func (t *ChristmasTree) GetPolygon() *resolv.ConvexPolygon {
-
-	// Tree dimensions
-	const (
-		TrunkW       = 0.15
-		TrunkH       = 0.2
-		BaseW        = 0.7
-		MidW         = 0.4
-		TopW         = 0.25
-		TipY         = 0.8
-		Tier1Y       = 0.5
-		Tier2Y       = 0.25
-		BaseY        = 0.0
-		TrunkBottomY = -TrunkH
-	)
-
-	// Full tree outline points (matching Python implementation)
-	points := []float64{
-		// Start at Tip
-		0.0, TipY,
-		// Right side - Top Tier
-		TopW / 2, Tier1Y,
-		TopW / 4, Tier1Y,
-		// Right side - Middle Tier
-		MidW / 2, Tier2Y,
-		MidW / 4, Tier2Y,
-		// Right side - Bottom Tier
-		BaseW / 2, BaseY,
-		// Right Trunk
-		TrunkW / 2, BaseY,
-		TrunkW / 2, TrunkBottomY,
-		// Left Trunk
-		-TrunkW / 2, TrunkBottomY,
-		-TrunkW / 2, BaseY,
-		// Left side - Bottom Tier
-		-BaseW / 2, BaseY,
-		// Left side - Middle Tier
-		-MidW / 4, Tier2Y,
-		-MidW / 2, Tier2Y,
-		// Left side - Top Tier
-		-TopW / 4, Tier1Y,
-		-TopW / 2, Tier1Y,
-	}
-
-	poly := resolv.NewConvexPolygon(t.X, t.Y, points)
-
-	poly.SetRotation(deg2rad(t.Angle))
-
-	return poly
-}
-
+// GetBoundingBox returns the axis-aligned bounding box of the rotated tree
 func (t *ChristmasTree) GetBoundingBox() (float64, float64, float64, float64) {
 	// Calculate bounding box from the actual orb polygon (same as used for intersection)
 	poly := t.GetOrbPolygon()
@@ -100,7 +50,7 @@ func (t *ChristmasTree) GetBoundingBox() (float64, float64, float64, float64) {
 
 // GetOrbPolygon returns an orb.Polygon representing the tree outline
 func (t *ChristmasTree) GetOrbPolygon() orb.Polygon {
-	// Tree dimensions (same as GetPolygon)
+	// Tree dimensions
 	const (
 		TrunkW       = 0.15
 		TrunkH       = 0.2
@@ -192,12 +142,6 @@ func (t *ChristmasTree) Intersect(other *ChristmasTree) bool {
 
 // orbPolygonToGeom converts an orb.Polygon to polygol.Geom format
 func orbPolygonToGeom(poly orb.Polygon) polygol.Geom {
-	// polygol.Geom is [][][][]float64
-	// First level: array of polygons (for MultiPolygon, we have just one)
-	// Second level: array of rings (outer ring + holes)
-	// Third level: array of points
-	// Fourth level: [x, y] coordinates
-
 	geom := make(polygol.Geom, 1)            // One polygon
 	geom[0] = make([][][]float64, len(poly)) // Rings (outer + holes)
 
