@@ -12,7 +12,12 @@ import (
 type ChristmasTree struct {
 	ID    int
 	X, Y  float64
-	Angle float64
+	Angle float64 // Angle in DEGREES (Kaggle submission format)
+}
+
+// deg2rad converts degrees to radians
+func deg2rad(deg float64) float64 {
+	return deg * math.Pi / 180.0
 }
 
 // GetPolygon returns a single polygon representing the entire tree outline
@@ -62,7 +67,7 @@ func (t *ChristmasTree) GetPolygon() *resolv.ConvexPolygon {
 
 	poly := resolv.NewConvexPolygon(t.X, t.Y, points)
 
-	poly.SetRotation(t.Angle)
+	poly.SetRotation(deg2rad(t.Angle))
 
 	return poly
 }
@@ -88,32 +93,33 @@ func (t *ChristmasTree) GetOrbPolygon() orb.Polygon {
 		TrunkBottomY = -TrunkH
 	)
 
-	// Create the outer ring of the polygon
+	// Create the outer ring of the polygon (COUNTER-CLOCKWISE for polygol)
+	// CCW order: tip -> left side down -> trunk -> right side up -> tip
 	ring := orb.Ring{
 		// Start at Tip
 		orb.Point{0.0, TipY},
-		// Right side - Top Tier
-		orb.Point{TopW / 2, Tier1Y},
-		orb.Point{TopW / 4, Tier1Y},
-		// Right side - Middle Tier
-		orb.Point{MidW / 2, Tier2Y},
-		orb.Point{MidW / 4, Tier2Y},
-		// Right side - Bottom Tier
-		orb.Point{BaseW / 2, BaseY},
-		// Right Trunk
-		orb.Point{TrunkW / 2, BaseY},
-		orb.Point{TrunkW / 2, TrunkBottomY},
-		// Left Trunk
-		orb.Point{-TrunkW / 2, TrunkBottomY},
-		orb.Point{-TrunkW / 2, BaseY},
+		// Left side - Top Tier (going down left = CCW)
+		orb.Point{-TopW / 2, Tier1Y},
+		orb.Point{-TopW / 4, Tier1Y},
+		// Left side - Middle Tier
+		orb.Point{-MidW / 2, Tier2Y},
+		orb.Point{-MidW / 4, Tier2Y},
 		// Left side - Bottom Tier
 		orb.Point{-BaseW / 2, BaseY},
-		// Left side - Middle Tier
-		orb.Point{-MidW / 4, Tier2Y},
-		orb.Point{-MidW / 2, Tier2Y},
-		// Left side - Top Tier
-		orb.Point{-TopW / 4, Tier1Y},
-		orb.Point{-TopW / 2, Tier1Y},
+		// Left Trunk
+		orb.Point{-TrunkW / 2, BaseY},
+		orb.Point{-TrunkW / 2, TrunkBottomY},
+		// Right Trunk
+		orb.Point{TrunkW / 2, TrunkBottomY},
+		orb.Point{TrunkW / 2, BaseY},
+		// Right side - Bottom Tier
+		orb.Point{BaseW / 2, BaseY},
+		// Right side - Middle Tier
+		orb.Point{MidW / 4, Tier2Y},
+		orb.Point{MidW / 2, Tier2Y},
+		// Right side - Top Tier
+		orb.Point{TopW / 4, Tier1Y},
+		orb.Point{TopW / 2, Tier1Y},
 		// Close the ring back to the tip
 		orb.Point{0.0, TipY},
 	}
@@ -126,8 +132,9 @@ func (t *ChristmasTree) GetOrbPolygon() orb.Polygon {
 
 	// Apply rotation if needed
 	if t.Angle != 0 {
-		cosAngle := math.Cos(t.Angle)
-		sinAngle := math.Sin(t.Angle)
+		angleRad := deg2rad(t.Angle)
+		cosAngle := math.Cos(angleRad)
+		sinAngle := math.Sin(angleRad)
 
 		for i := range ring {
 			// Rotate around tree center (t.X, t.Y)

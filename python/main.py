@@ -184,7 +184,7 @@ def main():
     submission_path = '../golang/sample_submission.csv'
     
     # Visualize different tree counts
-    tree_counts = [10, 20, 50, 100]
+    tree_counts = [10, 20, 30]
     
     for n in tree_counts:
         print(f"Plotting {n} trees...")

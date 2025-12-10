@@ -16,7 +16,7 @@ func main() {
 	var treeData [][]string
 
 	// Pack trees progressively from 1 to 200
-	for n := 1; n <= 200; n++ {
+	for n := 1; n <= 30; n++ {
 		currentPlacedTrees, _ = initializeTrees(n, currentPlacedTrees)
 		if n%10 == 0 {
 			fmt.Printf("Packed %d trees\n", n)
