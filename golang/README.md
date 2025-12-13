@@ -1,55 +1,76 @@
 # Tree Packing Challenge - Go Implementation
 
-Greedy algorithm implementation for the tree packing challenge in Go.
+Greedy and Simulated Annealing algorithms for the Kaggle tree packing challenge.
 
 ## Structure
 
-- **`main.go`** - Entry point, handles CSV output
-- **`tree.go`** - Christmas tree geometry and collision detection
-- **`algorithm.go`** - Greedy placement algorithm with spatial indexing
-- **`go.mod`** - Dependencies
+```
+golang/
+├── cmd/packer/main.go         # CLI entry point
+├── pkg/tree/
+│   ├── tree.go                # Christmas tree geometry
+│   ├── algorithm.go           # Greedy placement algorithm
+│   └── simulated_annealing.go # SA optimization
+├── sa_config.yaml             # SA configuration file
+└── go.mod
+```
 
-## Dependencies
-
-- [`github.com/solarlune/resolv`](https://github.com/solarlune/resolv) - 2D collision detection using SAT
-- [`github.com/tidwall/rtree`](https://github.com/tidwall/rtree) - Spatial index for fast collision queries
-
-## How It Works
-
-The algorithm:
-
-1. **Progressive Packing**: Builds configurations from 1 to 200 trees, reusing previous placements
-2. **Greedy Placement**: For each new tree:
-   - Try 10 random angles (weighted by `abs(sin(2θ))` to favor corners)
-   - Start at radius 20 and move inward until collision
-   - Back off slightly to find valid placement
-   - Keep the placement with smallest radius
-3. **Collision Detection**: 
-   - Trees decomposed into 4 convex parts (trunk + 3 tiers)
-   - R-tree spatial index for fast bounding box queries
-   - SAT (Separating Axis Theorem) for precise collision checks
-4. **Output**: CSV with tree positions for each configuration
-
-## Running
+## Quick Start
 
 ```bash
 # Build
-go build -o tree-packing .
+cd golang
+go build -o packer ./cmd/packer
 
-# Run
-./tree-packing
+# Run with greedy algorithm (default)
+./packer -algorithm greedy -n 200 -output submission.csv
+
+# Run with simulated annealing
+./packer -algorithm sa -config sa_config.yaml -n 200 -output submission.csv
 ```
 
-Output: `sample_submission.csv`
+## CLI Flags
 
-## Algorithm Details
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-algorithm` | `greedy` | Algorithm: `greedy` or `sa` |
+| `-config` | *(none)* | Path to SA config YAML file |
+| `-n` | `200` | Number of trees to pack |
+| `-output` | `submission.csv` | Output CSV file path |
+| `-seed` | `0` | Random seed (0 = use current time) |
 
-**Tree Shape**: Each tree consists of 4 convex polygons:
-- Trunk (rectangle)
-- Bottom tier (trapezoid)
-- Middle tier (trapezoid)
-- Top tier (triangle)
+## Algorithms
 
-**Weighted Angle**: Trees placed along vectors with angle θ where P(θ) ∝ |sin(2θ)|, creating a less circular packing.
+### Greedy Placement
+1. Progressive packing from 1 to N trees
+2. For each new tree: try 10 random angles, move inward until collision
+3. R-tree spatial index for O(log n) collision queries
 
-**Spatial Optimization**: R-tree index reduces collision checks from O(n) to O(log n) on average.
+### Simulated Annealing
+1. Start with greedy solution
+2. Perturb random tree's position/angle
+3. Accept better solutions or worse ones with probability exp(-Δ/T)
+4. Cool temperature using linear/exponential/polynomial schedule
+
+## SA Configuration
+
+Edit `sa_config.yaml`:
+
+```yaml
+params:
+  Tmax: 0.0002          # Starting temperature
+  Tmin: 0.00005         # Final temperature
+  nsteps: 15            # Outer temperature steps
+  nsteps_per_T: 500     # Inner iterations per temperature
+  cooling: "exponential"  # linear, exponential, polynomial
+  position_delta: 0.01  # Position perturbation range
+  angle_delta: 30.0     # Angle perturbation range (degrees)
+  random_state: 42
+  log_freq: 250
+```
+
+## Dependencies
+
+- [`github.com/engelsjk/polygol`](https://github.com/engelsjk/polygol) - Polygon intersection
+- [`github.com/tidwall/rtree`](https://github.com/tidwall/rtree) - Spatial index
+- [`gopkg.in/yaml.v3`](https://gopkg.in/yaml.v3) - YAML config parsing
