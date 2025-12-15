@@ -13,7 +13,7 @@ import (
 
 func main() {
 	// CLI flags
-	algorithm := flag.String("algorithm", "greedy", "Algorithm to use: 'greedy' or 'sa'")
+	algorithm := flag.String("algorithm", "greedy", "Algorithm to use: 'greedy', 'sa', 'grid', or 'grid-sa'")
 	configPath := flag.String("config", "", "Path to SA config YAML file (optional, uses defaults if not provided)")
 	numTrees := flag.Int("n", 200, "Number of trees to pack")
 	output := flag.String("output", "submission.csv", "Output CSV file path")
@@ -37,8 +37,12 @@ func main() {
 		treeData = runGreedy(*numTrees)
 	case "sa":
 		treeData = runSimulatedAnnealing(*numTrees, *configPath)
+	case "grid":
+		treeData = runGrid(*numTrees)
+	case "grid-sa":
+		treeData = runGridSA(*numTrees, *configPath)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s (use 'greedy' or 'sa')\n", *algorithm)
+		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s (use 'greedy', 'sa', 'grid', or 'grid-sa')\n", *algorithm)
 		os.Exit(1)
 	}
 
@@ -104,6 +108,65 @@ func runSimulatedAnnealing(numTrees int, configPath string) [][]string {
 		currentTrees = bestTrees
 
 		fmt.Printf("SA: n=%d, score=%.5f\n", n, bestScore)
+
+		// Record each tree's position for this configuration
+		for tIdx, t := range bestTrees {
+			treeData = append(treeData, formatTree(n, tIdx, t))
+		}
+	}
+
+	return treeData
+}
+
+// runGrid runs the grid-based placement algorithm (Python-style)
+func runGrid(numTrees int) [][]string {
+	var treeData [][]string
+
+	// For each configuration size
+	for n := 1; n <= numTrees; n++ {
+		score, trees := tree.FindBestGridSolution(n)
+
+		if n%10 == 0 {
+			fmt.Printf("Grid: n=%d, score=%.5f\n", n, score)
+		}
+
+		// Record each tree's position for this configuration
+		for tIdx, t := range trees {
+			treeData = append(treeData, formatTree(n, tIdx, t))
+		}
+	}
+
+	return treeData
+}
+
+// runGridSA runs grid-based initialization followed by SA optimization
+func runGridSA(numTrees int, configPath string) [][]string {
+	// Load config
+	var config *tree.SAConfig
+	var err error
+
+	if configPath != "" {
+		config, err = tree.LoadSAConfig(configPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to load config: %v, using defaults\n", err)
+			config = tree.DefaultSAConfig()
+		}
+	} else {
+		config = tree.DefaultSAConfig()
+	}
+
+	var treeData [][]string
+
+	// For each configuration size
+	for n := 1; n <= numTrees; n++ {
+		// Initialize with grid-based placement
+		_, gridTrees := tree.FindBestGridSolution(n)
+
+		// Run SA to optimize
+		sa := tree.NewSimulatedAnnealing(gridTrees, config)
+		bestScore, bestTrees := sa.Solve()
+
+		fmt.Printf("Grid+SA: n=%d, score=%.5f\n", n, bestScore)
 
 		// Record each tree's position for this configuration
 		for tIdx, t := range bestTrees {

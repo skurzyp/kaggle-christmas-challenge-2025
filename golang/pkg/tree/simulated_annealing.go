@@ -64,7 +64,7 @@ func DefaultSAConfig() *SAConfig {
 		Tmax:          0.0002,
 		Tmin:          0.00005,
 		NSteps:        15,
-		NStepsPerT:    500,
+		NStepsPerT:    100,
 		Cooling:       CoolingExponential,
 		Alpha:         0.99,
 		N:             4,

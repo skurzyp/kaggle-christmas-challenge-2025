@@ -184,7 +184,7 @@ def plot_trees(num_trees: int, submission_path: str):
 
 def main():
     """Main function to visualize sample submissions."""
-    submission_path = '../results/submissions/submission-sa.csv'
+    submission_path = '../results/submissions/submission-grid.csv'
     
     # Visualize different tree counts
     tree_counts = [10, 12, 14, 16, 18]
