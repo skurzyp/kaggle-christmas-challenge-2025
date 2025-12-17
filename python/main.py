@@ -3,11 +3,12 @@ Visualization script for the Tree Packing Challenge sample submission.
 Displays Christmas trees from the sample_submission.csv file.
 """
 
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend for headless rendering
-
+import argparse
 import math
 import os
+
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for headless rendering
 from decimal import Decimal, getcontext
 
 import matplotlib.pyplot as plt
@@ -102,6 +103,68 @@ def load_submission(filepath: str, num_trees: int) -> pd.DataFrame:
     return subset
 
 
+def get_bounding_side_length(num_trees: int, submission_path: str) -> Decimal:
+    """Calculate the bounding square side length for a given number of trees."""
+    df = load_submission(submission_path, num_trees)
+    
+    if df.empty:
+        return Decimal('0')
+    
+    placed_trees = []
+    for _, row in df.iterrows():
+        tree = ChristmasTree(
+            center_x=row['x'],
+            center_y=row['y'],
+            angle=row['deg']
+        )
+        placed_trees.append(tree)
+    
+    all_polygons = [t.polygon for t in placed_trees]
+    bounds = unary_union(all_polygons).bounds
+    
+    minx = Decimal(bounds[0]) / scale_factor
+    miny = Decimal(bounds[1]) / scale_factor
+    maxx = Decimal(bounds[2]) / scale_factor
+    maxy = Decimal(bounds[3]) / scale_factor
+
+    width = maxx - minx
+    height = maxy - miny
+    side_length = max(width, height)
+    
+    return side_length
+
+
+def calculate_scores(submission_path: str, max_trees: int = 200) -> list:
+    """
+    Calculate scores for each tree count.
+    Score = x² / n where x is bounding square edge length, n is number of trees.
+    Returns list of (n, side_length, score) tuples.
+    """
+    results = []
+    total_score = Decimal('0')
+    
+    print("\n" + "=" * 70)
+    print(f"{'N':>5} │ {'Side Length':>18} │ {'Score (x²/n)':>18}")
+    print("─" * 70)
+    
+    for n in range(1, max_trees + 1):
+        try:
+            side_length = get_bounding_side_length(n, submission_path)
+            if side_length > 0:
+                score = (side_length * side_length) / Decimal(n)
+                total_score += score
+                results.append((n, side_length, score))
+                print(f"{n:>5} │ {float(side_length):>18.12f} │ {float(score):>18.12f}")
+        except Exception as e:
+            print(f"{n:>5} │ {'ERROR':>18} │ {str(e)[:18]}")
+    
+    print("─" * 70)
+    print(f"{'TOTAL':>5} │ {'-':>18} │ {float(total_score):>18.12f}")
+    print("=" * 70 + "\n")
+    
+    return results, total_score
+
+
 def plot_trees(num_trees: int, submission_path: str):
     """Plot the tree arrangement for a given number of trees."""
     # Load submission data
@@ -184,10 +247,31 @@ def plot_trees(num_trees: int, submission_path: str):
 
 def main():
     """Main function to visualize sample submissions."""
-    submission_path = '../results/submissions/sample_submission.csv'
+    parser = argparse.ArgumentParser(description='Visualize Christmas tree packing submissions')
+    parser.add_argument('-o', '--output', 
+                        default='../results/submissions/submission.csv',
+                        help='Path to submission CSV file (default: ../results/submissions/submission.csv)')
+    parser.add_argument('-n', '--trees', 
+                        type=int, 
+                        nargs='+',
+                        default=[10, 12, 14, 16, 18],
+                        help='Number of trees to visualize (default: 10 12 14 16 18)')
+    parser.add_argument('--score', 
+                        action='store_true',
+                        help='Calculate and display scores instead of plotting')
+    parser.add_argument('--max-n', 
+                        type=int, 
+                        default=200,
+                        help='Maximum number of trees to score (default: 200)')
+    args = parser.parse_args()
     
-    # Visualize different tree counts
-    tree_counts = [10, 50, 100, 150, 200]
+    submission_path = args.output
+    
+    if args.score:
+        # Calculate and display scores
+        results, total = calculate_scores(submission_path, args.max_n)
+    
+    tree_counts = args.trees
     
     for n in tree_counts:
         print(f"Plotting {n} trees...")

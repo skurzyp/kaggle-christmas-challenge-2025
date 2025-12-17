@@ -1,0 +1,21 @@
+params:
+  # Temperature schedule
+  Tmax: 0.0002
+  Tmin: 0.00005
+  
+  # Iteration counts  
+  nsteps: 20          # Outer temperature steps
+  nsteps_per_T: 100   # Inner steps per temperature
+  
+  # Cooling schedule: "linear", "exponential", or "polynomial"
+  cooling: "exponential"
+  alpha: 0.99
+  n: 4                # Polynomial exponent (only used if cooling=polynomial)
+  
+  # Perturbation deltas
+  position_delta: 0.01
+  angle_delta: 30.0
+  
+  # Misc
+  random_state: 42
+  log_freq: 250

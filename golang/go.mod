@@ -9,4 +9,5 @@ require (
 	github.com/solarlune/resolv v0.8.1 // indirect
 	github.com/tidwall/geoindex v1.7.0 // indirect
 	github.com/tidwall/rtree v1.10.0 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
