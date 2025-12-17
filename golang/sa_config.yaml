@@ -4,8 +4,8 @@ params:
   Tmin: 0.00005
   
   # Iteration counts  
-  nsteps: 50          # Outer temperature steps
-  nsteps_per_T: 1000   # Inner steps per temperature
+  nsteps: 20          # Outer temperature steps
+  nsteps_per_T: 100   # Inner steps per temperature
   
   # Cooling schedule: "linear", "exponential", or "polynomial"
   cooling: "exponential"

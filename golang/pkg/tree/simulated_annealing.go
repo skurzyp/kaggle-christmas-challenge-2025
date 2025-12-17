@@ -241,8 +241,8 @@ func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
 				sa.restoreTree(&currentTrees[i], oldX, oldY, oldAngle)
 				if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
 					elapsed := formatDuration(time.Since(startTime))
-					fmt.Printf("T: %.3e  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
-						T, step1, currentScore, bestScore, elapsed)
+					fmt.Printf("[Trees: %d]T: %.3f  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
+						len(currentTrees), T, step1, currentScore, bestScore, elapsed)
 				}
 				continue
 			}
@@ -258,7 +258,7 @@ func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
 					for j := range currentTrees {
 						bestTrees[j] = currentTrees[j].Clone()
 					}
-					fmt.Printf("NEW BEST SCORE: %8.5f\n", bestScore)
+					fmt.Printf("[n=%3d] NEW BEST SCORE: %8.5f\n", len(currentTrees), bestScore)
 				}
 			} else {
 				sa.restoreTree(&currentTrees[i], oldX, oldY, oldAngle)
@@ -266,8 +266,8 @@ func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
 
 			if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
 				elapsed := formatDuration(time.Since(startTime))
-				fmt.Printf("T: %.3e  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
-					T, step1, currentScore, bestScore, elapsed)
+				fmt.Printf("[n=%3d] T: %.3e  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
+					len(currentTrees), T, step1, currentScore, bestScore, elapsed)
 			}
 		}
 
