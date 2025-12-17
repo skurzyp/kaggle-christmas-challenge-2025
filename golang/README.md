@@ -43,7 +43,7 @@ go build -o packer ./cmd/packer
 | `-algorithm` | `greedy` | Algorithm: `greedy`, `sa`, `grid`, or `grid-sa` |
 | `-config` | *(none)* | Path to SA config YAML file |
 | `-n` | `200` | Number of trees to pack |
-| `-output` | `submission.csv` | Output CSV file path |
+| `-output` | `../../results/submissions/submission.csv` | Output CSV file path |
 | `-seed` | `0` | Random seed (0 = use current time) |
 
 ## Algorithms

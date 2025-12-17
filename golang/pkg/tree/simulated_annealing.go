@@ -62,8 +62,8 @@ func LoadSAConfig(path string) (*SAConfig, error) {
 func DefaultSAConfig() *SAConfig {
 	return &SAConfig{
 		Tmax:          0.0002,
-		Tmin:          0.00005,
-		NSteps:        15,
+		Tmin:          0.00001, // Lower floor allows more fine-tuning
+		NSteps:        10,
 		NStepsPerT:    100,
 		Cooling:       CoolingExponential,
 		Alpha:         0.99,
@@ -71,7 +71,7 @@ func DefaultSAConfig() *SAConfig {
 		PositionDelta: 0.01,
 		AngleDelta:    30.0,
 		RandomSeed:    42,
-		LogFreq:       250,
+		LogFreq:       100,
 	}
 }
 

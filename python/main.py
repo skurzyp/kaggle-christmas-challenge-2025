@@ -3,11 +3,12 @@ Visualization script for the Tree Packing Challenge sample submission.
 Displays Christmas trees from the sample_submission.csv file.
 """
 
-import matplotlib
-matplotlib.use('Agg')  # Non-interactive backend for headless rendering
-
+import argparse
 import math
 import os
+
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for headless rendering
 from decimal import Decimal, getcontext
 
 import matplotlib.pyplot as plt
@@ -184,10 +185,19 @@ def plot_trees(num_trees: int, submission_path: str):
 
 def main():
     """Main function to visualize sample submissions."""
-    submission_path = '../results/submissions/submission-grid.csv'
+    parser = argparse.ArgumentParser(description='Visualize Christmas tree packing submissions')
+    parser.add_argument('-o', '--output', 
+                        default='../results/submissions/submission.csv',
+                        help='Path to submission CSV file (default: ../results/submissions/submission.csv)')
+    parser.add_argument('-n', '--trees', 
+                        type=int, 
+                        nargs='+',
+                        default=[10, 12, 14, 16, 18],
+                        help='Number of trees to visualize (default: 10 12 14 16 18)')
+    args = parser.parse_args()
     
-    # Visualize different tree counts
-    tree_counts = [10, 12, 14, 16, 18]
+    submission_path = args.output
+    tree_counts = args.trees
     
     for n in tree_counts:
         print(f"Plotting {n} trees...")

@@ -48,3 +48,10 @@ Please refer to the specific README files in each directory for detailed running
 
 - [Python Instructions](python/README.md)
 - [Go Instructions](golang/README.md)
+
+## Output
+
+Both implementations save submissions to `results/submissions/` by default:
+
+- **Go**: `results/submissions/submission.csv` (configurable via `-output` flag)
+- **Python**: Reads from `results/submissions/submission.csv` (configurable via `-o/--output` flag)

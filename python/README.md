@@ -27,6 +27,26 @@ To run the main script:
 poetry run python main.py
 ```
 
+### CLI Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-o, --output` | `../results/submissions/submission.csv` | Path to submission CSV file |
+| `-n, --trees` | `10 12 14 16 18` | Number of trees to visualize (space-separated) |
+
+### Examples
+
+```bash
+# Use default submission path
+poetry run python main.py
+
+# Specify custom submission file
+poetry run python main.py -o ../results/submissions/my-submission.csv
+
+# Specify tree counts to visualize
+poetry run python main.py -n 5 10 15 20
+```
+
 ## Development
 
 ### Formatting

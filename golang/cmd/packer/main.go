@@ -6,17 +6,28 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"runtime"
+	"sort"
+	"sync"
 	"time"
 
 	"tree-packing-challenge/pkg/tree"
 )
+
+// saResult holds the result of a single SA run for a specific n
+type saResult struct {
+	n        int
+	score    float64
+	trees    []tree.ChristmasTree
+	treeData [][]string
+}
 
 func main() {
 	// CLI flags
 	algorithm := flag.String("algorithm", "greedy", "Algorithm to use: 'greedy', 'sa', 'grid', or 'grid-sa'")
 	configPath := flag.String("config", "", "Path to SA config YAML file (optional, uses defaults if not provided)")
 	numTrees := flag.Int("n", 200, "Number of trees to pack")
-	output := flag.String("output", "submission.csv", "Output CSV file path")
+	output := flag.String("output", "../../results/submissions/submission.csv", "Output CSV file path")
 	seed := flag.Int64("seed", 0, "Random seed (0 = use current time)")
 
 	flag.Parse()
@@ -76,7 +87,7 @@ func runGreedy(numTrees int) [][]string {
 	return treeData
 }
 
-// runSimulatedAnnealing runs SA optimization on each tree count
+// runSimulatedAnnealing runs SA optimization on each tree count in parallel
 func runSimulatedAnnealing(numTrees int, configPath string) [][]string {
 	// Load config
 	var config *tree.SAConfig
@@ -92,27 +103,70 @@ func runSimulatedAnnealing(numTrees int, configPath string) [][]string {
 		config = tree.DefaultSAConfig()
 	}
 
-	var treeData [][]string
-	var currentTrees []tree.ChristmasTree
+	numWorkers := runtime.NumCPU()
+	fmt.Printf("Running SA in parallel with %d workers\n", numWorkers)
 
-	// For each configuration size
+	// Channel for jobs (tree counts to process)
+	jobs := make(chan int, numTrees)
+	// Channel for results
+	results := make(chan saResult, numTrees)
+
+	// Start worker pool
+	var wg sync.WaitGroup
+	for range numWorkers {
+		wg.Go(func() {
+			for n := range jobs {
+				// Initialize trees for this n (each worker creates its own)
+				initialTrees, _ := tree.InitializeTrees(n, nil)
+
+				// Run SA to optimize
+				sa := tree.NewSimulatedAnnealing(initialTrees, config)
+				bestScore, bestTrees := sa.Solve()
+
+				// Format tree data for this n
+				var data [][]string
+				for tIdx, t := range bestTrees {
+					data = append(data, formatTree(n, tIdx, t))
+				}
+
+				results <- saResult{
+					n:        n,
+					score:    bestScore,
+					trees:    bestTrees,
+					treeData: data,
+				}
+			}
+		})
+	}
+
+	// Send all jobs
 	for n := 1; n <= numTrees; n++ {
-		// Initialize with greedy first
-		currentTrees, _ = tree.InitializeTrees(n, currentTrees)
+		jobs <- n
+	}
+	close(jobs)
 
-		// Run SA to optimize
-		sa := tree.NewSimulatedAnnealing(currentTrees, config)
-		bestScore, bestTrees := sa.Solve()
+	// Wait for all workers in a separate goroutine
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
-		// Use best trees as starting point for next iteration
-		currentTrees = bestTrees
+	// Collect all results
+	var allResults []saResult
+	for result := range results {
+		fmt.Printf("SA: n=%d, score=%.5f\n", result.n, result.score)
+		allResults = append(allResults, result)
+	}
 
-		fmt.Printf("SA: n=%d, score=%.5f\n", n, bestScore)
+	// Sort results by n to maintain order
+	sort.Slice(allResults, func(i, j int) bool {
+		return allResults[i].n < allResults[j].n
+	})
 
-		// Record each tree's position for this configuration
-		for tIdx, t := range bestTrees {
-			treeData = append(treeData, formatTree(n, tIdx, t))
-		}
+	// Combine all tree data in order
+	var treeData [][]string
+	for _, result := range allResults {
+		treeData = append(treeData, result.treeData...)
 	}
 
 	return treeData
@@ -139,7 +193,7 @@ func runGrid(numTrees int) [][]string {
 	return treeData
 }
 
-// runGridSA runs grid-based initialization followed by SA optimization
+// runGridSA runs grid-based initialization followed by SA optimization in parallel
 func runGridSA(numTrees int, configPath string) [][]string {
 	// Load config
 	var config *tree.SAConfig
@@ -155,23 +209,70 @@ func runGridSA(numTrees int, configPath string) [][]string {
 		config = tree.DefaultSAConfig()
 	}
 
-	var treeData [][]string
+	numWorkers := runtime.NumCPU()
+	fmt.Printf("Running Grid+SA in parallel with %d workers\n", numWorkers)
 
-	// For each configuration size
+	// Channel for jobs (tree counts to process)
+	jobs := make(chan int, numTrees)
+	// Channel for results
+	results := make(chan saResult, numTrees)
+
+	// Start worker pool
+	var wg sync.WaitGroup
+	for range numWorkers {
+		wg.Go(func() {
+			for n := range jobs {
+				// Initialize with grid-based placement
+				_, gridTrees := tree.FindBestGridSolution(n)
+
+				// Run SA to optimize
+				sa := tree.NewSimulatedAnnealing(gridTrees, config)
+				bestScore, bestTrees := sa.Solve()
+
+				// Format tree data for this n
+				var data [][]string
+				for tIdx, t := range bestTrees {
+					data = append(data, formatTree(n, tIdx, t))
+				}
+
+				results <- saResult{
+					n:        n,
+					score:    bestScore,
+					trees:    bestTrees,
+					treeData: data,
+				}
+			}
+		})
+	}
+
+	// Send all jobs
 	for n := 1; n <= numTrees; n++ {
-		// Initialize with grid-based placement
-		_, gridTrees := tree.FindBestGridSolution(n)
+		jobs <- n
+	}
+	close(jobs)
 
-		// Run SA to optimize
-		sa := tree.NewSimulatedAnnealing(gridTrees, config)
-		bestScore, bestTrees := sa.Solve()
+	// Wait for all workers in a separate goroutine
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
 
-		fmt.Printf("Grid+SA: n=%d, score=%.5f\n", n, bestScore)
+	// Collect all results
+	var allResults []saResult
+	for result := range results {
+		fmt.Printf("Grid+SA: n=%d, score=%.5f\n", result.n, result.score)
+		allResults = append(allResults, result)
+	}
 
-		// Record each tree's position for this configuration
-		for tIdx, t := range bestTrees {
-			treeData = append(treeData, formatTree(n, tIdx, t))
-		}
+	// Sort results by n to maintain order
+	sort.Slice(allResults, func(i, j int) bool {
+		return allResults[i].n < allResults[j].n
+	})
+
+	// Combine all tree data in order
+	var treeData [][]string
+	for _, result := range allResults {
+		treeData = append(treeData, result.treeData...)
 	}
 
 	return treeData
