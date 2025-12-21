@@ -111,11 +111,18 @@ func (sa *SimulatedAnnealing) perturbTree(tree *ChristmasTree) (oldX, oldY, oldA
 
 	dx := (sa.rng.Float64()*2 - 1) * sa.Config.PositionDelta
 	dy := (sa.rng.Float64()*2 - 1) * sa.Config.PositionDelta
-	dAngle := (sa.rng.Float64()*2 - 1) * sa.Config.AngleDelta
+	dAngle := sa.rng.NormFloat64() * sa.Config.AngleDelta
 
 	tree.X += dx
 	tree.Y += dy
-	tree.Angle = math.Mod(tree.Angle+dAngle+360, 360)
+	tree.Angle += dAngle
+	// Normalize to [-180, 180]
+	for tree.Angle > 180 {
+		tree.Angle -= 360
+	}
+	for tree.Angle <= -180 {
+		tree.Angle += 360
+	}
 
 	return oldX, oldY, oldAngle
 }
