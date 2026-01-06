@@ -33,6 +33,8 @@ poetry run python main.py
 |------|---------|-------------|
 | `-o, --output` | `../results/submissions/submission.csv` | Path to submission CSV file |
 | `-n, --trees` | `10 12 14 16 18` | Number of trees to visualize (space-separated) |
+| `--score` | `False` | Calculate and display scores instead of plotting |
+| `--max-n` | `200` | Maximum number of trees to score (only used with --score) |
 
 ### Examples
 
@@ -45,6 +47,12 @@ poetry run python main.py -o ../results/submissions/my-submission.csv
 
 # Specify tree counts to visualize
 poetry run python main.py -n 5 10 15 20
+
+# Calculate scores instead of plotting
+poetry run python main.py --score
+
+# Calculate scores for first 50 trees
+poetry run python main.py --score --max-n 50
 ```
 
 ## Development
