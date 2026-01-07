@@ -19,3 +19,6 @@ params:
   # Misc
   random_state: 42
   log_freq: 250
+
+  # Penalty-based SA
+  overlap_penalty: 10.0 # λ multiplier for overlap area in score

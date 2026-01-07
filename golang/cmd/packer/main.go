@@ -24,7 +24,7 @@ type saResult struct {
 
 func main() {
 	// CLI flags
-	algorithm := flag.String("algorithm", "greedy", "Algorithm to use: 'greedy', 'sa', 'grid', or 'grid-sa'")
+	algorithm := flag.String("algorithm", "greedy", "Algorithm: greedy, sa, sa-penalty, grid, grid-sa, grid-sa-penalty")
 	configPath := flag.String("config", "", "Path to SA config YAML file (optional, uses defaults if not provided)")
 	numTrees := flag.Int("n", 200, "Number of trees to pack")
 	output := flag.String("output", "../../results/submissions/submission.csv", "Output CSV file path")
@@ -47,13 +47,17 @@ func main() {
 	case "greedy":
 		treeData = runGreedy(*numTrees)
 	case "sa":
-		treeData = runSimulatedAnnealing(*numTrees, *configPath)
+		treeData = runSimulatedAnnealing(*numTrees, *configPath, false)
+	case "sa-penalty":
+		treeData = runSimulatedAnnealing(*numTrees, *configPath, true)
 	case "grid":
 		treeData = runGrid(*numTrees)
 	case "grid-sa":
-		treeData = runGridSA(*numTrees, *configPath)
+		treeData = runGridSA(*numTrees, *configPath, false)
+	case "grid-sa-penalty":
+		treeData = runGridSA(*numTrees, *configPath, true)
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s (use 'greedy', 'sa', 'grid', or 'grid-sa')\n", *algorithm)
+		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s\n", *algorithm)
 		os.Exit(1)
 	}
 
@@ -87,24 +91,30 @@ func runGreedy(numTrees int) [][]string {
 	return treeData
 }
 
-// runSimulatedAnnealing runs SA optimization on each tree count in parallel
-func runSimulatedAnnealing(numTrees int, configPath string) [][]string {
-	// Load config
-	var config *tree.SAConfig
-	var err error
-
+// loadConfig loads SA config from path or returns defaults
+func loadConfig(configPath string) *tree.SAConfig {
 	if configPath != "" {
-		config, err = tree.LoadSAConfig(configPath)
+		config, err := tree.LoadSAConfig(configPath)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Warning: failed to load config: %v, using defaults\n", err)
-			config = tree.DefaultSAConfig()
+			return tree.DefaultSAConfig()
 		}
-	} else {
-		config = tree.DefaultSAConfig()
+		return config
+	}
+	return tree.DefaultSAConfig()
+}
+
+// runSimulatedAnnealing runs SA optimization on each tree count in parallel
+func runSimulatedAnnealing(numTrees int, configPath string, usePenalty bool) [][]string {
+	config := loadConfig(configPath)
+
+	algoName := "SA"
+	if usePenalty {
+		algoName = "SA-Penalty"
 	}
 
 	numWorkers := runtime.NumCPU()
-	fmt.Printf("Running SA in parallel with %d workers\n", numWorkers)
+	fmt.Printf("Running %s in parallel with %d workers\n", algoName, numWorkers)
 
 	// Channel for jobs (tree counts to process)
 	jobs := make(chan int, numTrees)
@@ -120,8 +130,16 @@ func runSimulatedAnnealing(numTrees int, configPath string) [][]string {
 				initialTrees, _ := tree.InitializeTrees(n, nil)
 
 				// Run SA to optimize
-				sa := tree.NewSimulatedAnnealing(initialTrees, config)
-				bestScore, bestTrees := sa.Solve()
+				var bestScore float64
+				var bestTrees []tree.ChristmasTree
+
+				if usePenalty {
+					sa := tree.NewSimulatedAnnealingPenalty(initialTrees, config)
+					bestScore, bestTrees = sa.SolvePenalty()
+				} else {
+					sa := tree.NewSimulatedAnnealing(initialTrees, config)
+					bestScore, bestTrees = sa.Solve()
+				}
 
 				// Format tree data for this n
 				var data [][]string
@@ -194,23 +212,16 @@ func runGrid(numTrees int) [][]string {
 }
 
 // runGridSA runs grid-based initialization followed by SA optimization in parallel
-func runGridSA(numTrees int, configPath string) [][]string {
-	// Load config
-	var config *tree.SAConfig
-	var err error
+func runGridSA(numTrees int, configPath string, usePenalty bool) [][]string {
+	config := loadConfig(configPath)
 
-	if configPath != "" {
-		config, err = tree.LoadSAConfig(configPath)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: failed to load config: %v, using defaults\n", err)
-			config = tree.DefaultSAConfig()
-		}
-	} else {
-		config = tree.DefaultSAConfig()
+	algoName := "Grid+SA"
+	if usePenalty {
+		algoName = "Grid+SA-Penalty"
 	}
 
 	numWorkers := runtime.NumCPU()
-	fmt.Printf("Running Grid+SA in parallel with %d workers\n", numWorkers)
+	fmt.Printf("Running %s in parallel with %d workers\n", algoName, numWorkers)
 
 	// Channel for jobs (tree counts to process)
 	jobs := make(chan int, numTrees)
@@ -226,8 +237,16 @@ func runGridSA(numTrees int, configPath string) [][]string {
 				_, gridTrees := tree.FindBestGridSolution(n)
 
 				// Run SA to optimize
-				sa := tree.NewSimulatedAnnealing(gridTrees, config)
-				bestScore, bestTrees := sa.Solve()
+				var bestScore float64
+				var bestTrees []tree.ChristmasTree
+
+				if usePenalty {
+					sa := tree.NewSimulatedAnnealingPenalty(gridTrees, config)
+					bestScore, bestTrees = sa.SolvePenalty()
+				} else {
+					sa := tree.NewSimulatedAnnealing(gridTrees, config)
+					bestScore, bestTrees = sa.Solve()
+				}
 
 				// Format tree data for this n
 				var data [][]string

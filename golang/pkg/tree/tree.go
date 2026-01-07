@@ -16,6 +16,16 @@ type ChristmasTree struct {
 	Angle float64 // Angle in DEGREES (Kaggle submission format)
 }
 
+// Clone creates a deep copy of a ChristmasTree
+func (t *ChristmasTree) Clone() ChristmasTree {
+	return ChristmasTree{
+		ID:    t.ID,
+		X:     t.X,
+		Y:     t.Y,
+		Angle: t.Angle,
+	}
+}
+
 // deg2rad converts degrees to radians
 func deg2rad(deg float64) float64 {
 	return deg * math.Pi / 180.0
@@ -153,4 +163,43 @@ func orbPolygonToGeom(poly orb.Polygon) polygol.Geom {
 	}
 
 	return geom
+}
+
+// IntersectionArea returns the area of overlap between two trees (0 if none)
+func (t *ChristmasTree) IntersectionArea(other *ChristmasTree) float64 {
+	poly1 := t.GetOrbPolygon()
+	poly2 := other.GetOrbPolygon()
+
+	geom1 := orbPolygonToGeom(poly1)
+	geom2 := orbPolygonToGeom(poly2)
+
+	intersection, err := polygol.Intersection(geom1, geom2)
+	if err != nil {
+		return 0
+	}
+
+	// Calculate area of intersection polygon(s)
+	totalArea := 0.0
+	for _, poly := range intersection {
+		for _, ring := range poly {
+			totalArea += calculateRingArea(ring)
+		}
+	}
+	return totalArea
+}
+
+// calculateRingArea calculates the area of a polygon ring using the shoelace formula
+func calculateRingArea(ring [][]float64) float64 {
+	n := len(ring)
+	if n < 3 {
+		return 0
+	}
+
+	area := 0.0
+	for i := 0; i < n; i++ {
+		j := (i + 1) % n
+		area += ring[i][0] * ring[j][1]
+		area -= ring[j][0] * ring[i][1]
+	}
+	return math.Abs(area) / 2.0
 }
