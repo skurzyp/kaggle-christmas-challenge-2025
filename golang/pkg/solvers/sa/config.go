@@ -1,4 +1,4 @@
-package tree
+package sa
 
 import (
 	"fmt"
@@ -16,8 +16,8 @@ const (
 	CoolingPolynomial  CoolingSchedule = "polynomial"
 )
 
-// SAConfig holds configuration parameters for simulated annealing
-type SAConfig struct {
+// Config holds configuration parameters for simulated annealing
+type Config struct {
 	Tmax           float64         `yaml:"Tmax"`
 	Tmin           float64         `yaml:"Tmin"`
 	NSteps         int             `yaml:"nsteps"`
@@ -32,8 +32,8 @@ type SAConfig struct {
 	OverlapPenalty float64         `yaml:"overlap_penalty"` // λ multiplier for penalty-based SA
 }
 
-// LoadSAConfig loads SA configuration from a YAML file
-func LoadSAConfig(path string) (*SAConfig, error) {
+// LoadConfig loads SA configuration from a YAML file
+func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read config file: %w", err)
@@ -41,11 +41,11 @@ func LoadSAConfig(path string) (*SAConfig, error) {
 
 	// Parse wrapper structure (config.yaml has nested "params" key)
 	var wrapper struct {
-		Params SAConfig `yaml:"params"`
+		Params Config `yaml:"params"`
 	}
 	if err := yaml.Unmarshal(data, &wrapper); err != nil {
-		// Try parsing directly as SAConfig
-		var config SAConfig
+		// Try parsing directly as Config
+		var config Config
 		if err2 := yaml.Unmarshal(data, &config); err2 != nil {
 			return nil, fmt.Errorf("failed to parse config: %w", err)
 		}
@@ -55,9 +55,9 @@ func LoadSAConfig(path string) (*SAConfig, error) {
 	return &wrapper.Params, nil
 }
 
-// DefaultSAConfig returns a default SA configuration
-func DefaultSAConfig() *SAConfig {
-	return &SAConfig{
+// DefaultConfig returns a default SA configuration
+func DefaultConfig() *Config {
+	return &Config{
 		Tmax:           0.0002,
 		Tmin:           0.00001,
 		NSteps:         10,

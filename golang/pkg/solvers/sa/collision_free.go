@@ -1,31 +1,33 @@
-package tree
+package sa
 
 import (
 	"fmt"
 	"math"
 	"time"
+
+	"tree-packing-challenge/pkg/tree"
 )
 
 // SimulatedAnnealing holds the state for the collision-free SA solver
 type SimulatedAnnealing struct {
-	*SABase
+	*Base
 }
 
 // NewSimulatedAnnealing creates a new collision-free SA solver
-func NewSimulatedAnnealing(trees []ChristmasTree, config *SAConfig) *SimulatedAnnealing {
+func NewSimulatedAnnealing(trees []tree.ChristmasTree, config *Config) *SimulatedAnnealing {
 	return &SimulatedAnnealing{
-		SABase: NewSABase(trees, config),
+		Base: NewBase(trees, config),
 	}
 }
 
 // Solve runs the collision-free simulated annealing algorithm
 // Moves that cause collisions are rejected
-func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
+func (sa *SimulatedAnnealing) Solve() (float64, []tree.ChristmasTree) {
 	startTime := time.Now()
 
 	T := sa.Config.Tmax
 	currentTrees := CloneTrees(sa.Trees)
-	currentScore := CalculateScore(currentTrees)
+	currentScore := tree.CalculateScore(currentTrees)
 	bestScore := currentScore
 	bestTrees := CloneTrees(currentTrees)
 
@@ -36,7 +38,7 @@ func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
 			oldX, oldY, oldAngle := sa.PerturbTree(&currentTrees[i])
 
 			// Check for collision - reject if collision detected
-			if HasCollision(currentTrees) {
+			if tree.HasCollision(currentTrees) {
 				sa.RestoreTree(&currentTrees[i], oldX, oldY, oldAngle)
 				if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
 					elapsed := FormatDuration(time.Since(startTime))
@@ -46,7 +48,7 @@ func (sa *SimulatedAnnealing) Solve() (float64, []ChristmasTree) {
 				continue
 			}
 
-			newScore := CalculateScore(currentTrees)
+			newScore := tree.CalculateScore(currentTrees)
 			delta := newScore - currentScore
 
 			// Accept if better or with probability exp(-delta/T)

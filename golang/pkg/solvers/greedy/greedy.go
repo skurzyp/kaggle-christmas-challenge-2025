@@ -1,8 +1,12 @@
-package tree
+// Package greedy implements a greedy strategy for placing trees,
+// utilizing random sampling and spatial indexing to minimize the packing area.
+package greedy
 
 import (
 	"math"
 	"math/rand"
+
+	"tree-packing-challenge/pkg/tree"
 
 	"github.com/tidwall/rtree"
 )
@@ -19,12 +23,12 @@ func GenerateWeightedAngle() float64 {
 }
 
 // InitializeTrees builds a greedy packing of n trees
-func InitializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTree, float64) {
+func InitializeTrees(numTrees int, existingTrees []tree.ChristmasTree) ([]tree.ChristmasTree, float64) {
 	if numTrees == 0 {
-		return []ChristmasTree{}, 0
+		return []tree.ChristmasTree{}, 0
 	}
 
-	placedTrees := make([]ChristmasTree, len(existingTrees))
+	placedTrees := make([]tree.ChristmasTree, len(existingTrees))
 	copy(placedTrees, existingTrees)
 
 	// Spatial Index for fast collision detection
@@ -38,7 +42,7 @@ func InitializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 	if numToAdd > 0 {
 		// If starting from scratch, place first tree at origin
 		if len(placedTrees) == 0 {
-			t := ChristmasTree{ID: 0, X: 0, Y: 0, Angle: rand.Float64() * 360.0}
+			t := tree.ChristmasTree{ID: 0, X: 0, Y: 0, Angle: rand.Float64() * 360.0}
 			placedTrees = append(placedTrees, t)
 			minX, minY, maxX, maxY := t.GetBoundingBox()
 			tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, 0)
@@ -47,7 +51,7 @@ func InitializeTrees(numTrees int, existingTrees []ChristmasTree) ([]ChristmasTr
 
 		for i := 0; i < numToAdd; i++ {
 			newID := len(placedTrees)
-			treeToPlace := ChristmasTree{ID: newID, Angle: rand.Float64() * 360.0}
+			treeToPlace := tree.ChristmasTree{ID: newID, Angle: rand.Float64() * 360.0}
 
 			var bestX, bestY float64
 			minRadius := math.Inf(1)

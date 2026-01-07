@@ -1,26 +1,30 @@
-package tree
+// Package sa provides simulated annealing algorithms and shared infrastructure
+// for solving tree packing optimization problems.
+package sa
 
 import (
 	"fmt"
 	"math"
 	"math/rand"
 	"time"
+
+	"tree-packing-challenge/pkg/tree"
 )
 
-// SABase provides shared functionality for SA algorithm variants
-type SABase struct {
-	Trees  []ChristmasTree
-	Config *SAConfig
+// Base provides shared functionality for SA algorithm variants
+type Base struct {
+	Trees  []tree.ChristmasTree
+	Config *Config
 	Rng    *rand.Rand
 }
 
-// NewSABase creates a new base SA solver with shared setup
-func NewSABase(trees []ChristmasTree, config *SAConfig) *SABase {
+// NewBase creates a new base SA solver with shared setup
+func NewBase(trees []tree.ChristmasTree, config *Config) *Base {
 	if config == nil {
-		config = DefaultSAConfig()
+		config = DefaultConfig()
 	}
 
-	return &SABase{
+	return &Base{
 		Trees:  trees,
 		Config: config,
 		Rng:    rand.New(rand.NewSource(config.RandomSeed)),
@@ -28,8 +32,8 @@ func NewSABase(trees []ChristmasTree, config *SAConfig) *SABase {
 }
 
 // PerturbTree perturbs a tree's position and angle, returns old params
-func (sa *SABase) PerturbTree(tree *ChristmasTree) (oldX, oldY, oldAngle float64) {
-	oldX, oldY, oldAngle = tree.X, tree.Y, tree.Angle
+func (sa *Base) PerturbTree(t *tree.ChristmasTree) (oldX, oldY, oldAngle float64) {
+	oldX, oldY, oldAngle = t.X, t.Y, t.Angle
 
 	dx := (sa.Rng.Float64()*2 - 1) * sa.Config.PositionDelta
 	dy := (sa.Rng.Float64()*2 - 1) * sa.Config.PositionDelta
@@ -37,22 +41,22 @@ func (sa *SABase) PerturbTree(tree *ChristmasTree) (oldX, oldY, oldAngle float64
 	dAngle := sa.Rng.NormFloat64() * sa.Config.AngleDelta
 	dAngle = math.Max(-180, math.Min(180, dAngle))
 
-	tree.X += dx
-	tree.Y += dy
-	tree.Angle = math.Mod(tree.Angle+dAngle+360, 360)
+	t.X += dx
+	t.Y += dy
+	t.Angle = math.Mod(t.Angle+dAngle+360, 360)
 
 	return oldX, oldY, oldAngle
 }
 
 // RestoreTree restores a tree to its previous position
-func (sa *SABase) RestoreTree(tree *ChristmasTree, x, y, angle float64) {
-	tree.X = x
-	tree.Y = y
-	tree.Angle = angle
+func (sa *Base) RestoreTree(t *tree.ChristmasTree, x, y, angle float64) {
+	t.X = x
+	t.Y = y
+	t.Angle = angle
 }
 
 // CoolTemperature applies the cooling schedule and returns the new temperature
-func (sa *SABase) CoolTemperature(T float64, step int) float64 {
+func (sa *Base) CoolTemperature(T float64, step int) float64 {
 	switch sa.Config.Cooling {
 	case CoolingLinear:
 		return T - (sa.Config.Tmax-sa.Config.Tmin)/float64(sa.Config.NSteps)
@@ -67,8 +71,8 @@ func (sa *SABase) CoolTemperature(T float64, step int) float64 {
 }
 
 // CloneTrees creates a deep copy of a slice of trees
-func CloneTrees(trees []ChristmasTree) []ChristmasTree {
-	cloned := make([]ChristmasTree, len(trees))
+func CloneTrees(trees []tree.ChristmasTree) []tree.ChristmasTree {
+	cloned := make([]tree.ChristmasTree, len(trees))
 	for i := range trees {
 		cloned[i] = trees[i].Clone()
 	}

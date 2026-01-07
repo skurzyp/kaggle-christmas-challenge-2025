@@ -1,22 +1,26 @@
-package tree
+// Package grid implements a grid-based placement strategy for trees,
+// organizing them in rows with alternating orientations to optimize packing.
+package grid
 
 import (
 	"math"
 
+	"tree-packing-challenge/pkg/tree"
+
 	"github.com/tidwall/rtree"
 )
 
-// GridConfig holds configuration for grid-based tree placement
-type GridConfig struct {
+// Config holds configuration for grid-based tree placement
+type Config struct {
 	HorizontalSpacing float64 // Spacing between trees in a row (default: 0.7)
 	EvenRowY          float64 // Y spacing for even rows (default: 1.0)
 	OddRowOffsetY     float64 // Y offset for odd rows (default: 0.8)
 	OddRowOffsetX     float64 // X offset for odd rows (default: 0.35, which is 0.7/2)
 }
 
-// DefaultGridConfig returns the default grid configuration
-func DefaultGridConfig() *GridConfig {
-	return &GridConfig{
+// DefaultConfig returns the default grid configuration
+func DefaultConfig() *Config {
+	return &Config{
 		HorizontalSpacing: 0.7,
 		EvenRowY:          1.0,
 		OddRowOffsetY:     0.8,
@@ -24,26 +28,26 @@ func DefaultGridConfig() *GridConfig {
 	}
 }
 
-// GridSolution represents a grid-based solution attempt
-type GridSolution struct {
-	Trees []ChristmasTree
+// Solution represents a grid-based solution attempt
+type Solution struct {
+	Trees []tree.ChristmasTree
 	Score float64
 	NEven int // Number of trees per even row
 	NOdd  int // Number of trees per odd row
 }
 
-// InitializeTreesGrid places trees in a grid pattern with alternating row orientations
+// InitializeTrees places trees in a grid pattern with alternating row orientations
 // This is the Go equivalent of the Python find_best_trees_with_collision function
-func InitializeTreesGrid(numTrees int, config *GridConfig) ([]ChristmasTree, float64) {
+func InitializeTrees(numTrees int, config *Config) ([]tree.ChristmasTree, float64) {
 	if config == nil {
-		config = DefaultGridConfig()
+		config = DefaultConfig()
 	}
 
 	if numTrees == 0 {
-		return []ChristmasTree{}, 0
+		return []tree.ChristmasTree{}, 0
 	}
 
-	var bestTrees []ChristmasTree
+	var bestTrees []tree.ChristmasTree
 	bestScore := math.MaxFloat64
 
 	// Try different combinations of even/odd row tree counts
@@ -71,8 +75,8 @@ func InitializeTreesGrid(numTrees int, config *GridConfig) ([]ChristmasTree, flo
 
 // tryGridPlacement attempts to place numTrees in a grid with nEven trees per even row
 // and nOdd trees per odd row, using collision detection
-func tryGridPlacement(numTrees, nEven, nOdd int, config *GridConfig) []ChristmasTree {
-	var allTrees []ChristmasTree
+func tryGridPlacement(numTrees, nEven, nOdd int, config *Config) []tree.ChristmasTree {
+	var allTrees []tree.ChristmasTree
 
 	// Build RTree for collision detection
 	tr := rtree.RTree{}
@@ -111,7 +115,7 @@ func tryGridPlacement(numTrees, nEven, nOdd int, config *GridConfig) []Christmas
 		for i := 0; i < treesInRow; i++ {
 			x := float64(i)*config.HorizontalSpacing + xOffset
 
-			candidateTree := ChristmasTree{
+			candidateTree := tree.ChristmasTree{
 				ID:    len(allTrees),
 				X:     x,
 				Y:     y,
@@ -153,7 +157,7 @@ func tryGridPlacement(numTrees, nEven, nOdd int, config *GridConfig) []Christmas
 }
 
 // calculateGridScore calculates the score for a grid placement (max side squared)
-func calculateGridScore(trees []ChristmasTree) float64 {
+func calculateGridScore(trees []tree.ChristmasTree) float64 {
 	if len(trees) == 0 {
 		return 0
 	}
@@ -184,11 +188,11 @@ func calculateGridScore(trees []ChristmasTree) float64 {
 	return side * side
 }
 
-// FindBestGridSolution finds the best grid-based solution for n trees
+// FindBestSolution finds the best grid-based solution for n trees
 // Returns the best score and trees
-func FindBestGridSolution(numTrees int) (float64, []ChristmasTree) {
-	config := DefaultGridConfig()
-	trees, score := InitializeTreesGrid(numTrees, config)
+func FindBestSolution(numTrees int) (float64, []tree.ChristmasTree) {
+	config := DefaultConfig()
+	trees, score := InitializeTrees(numTrees, config)
 	return score, trees
 }
 

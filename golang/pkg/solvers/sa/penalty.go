@@ -1,35 +1,37 @@
-package tree
+package sa
 
 import (
 	"fmt"
 	"math"
 	"time"
+
+	"tree-packing-challenge/pkg/tree"
 )
 
 // SimulatedAnnealingPenalty holds the state for the penalty-based SA solver
 type SimulatedAnnealingPenalty struct {
-	*SABase
+	*Base
 }
 
 // NewSimulatedAnnealingPenalty creates a new penalty-based SA solver
-func NewSimulatedAnnealingPenalty(trees []ChristmasTree, config *SAConfig) *SimulatedAnnealingPenalty {
+func NewSimulatedAnnealingPenalty(trees []tree.ChristmasTree, config *Config) *SimulatedAnnealingPenalty {
 	return &SimulatedAnnealingPenalty{
-		SABase: NewSABase(trees, config),
+		Base: NewBase(trees, config),
 	}
 }
 
 // SolvePenalty runs the penalty-based simulated annealing algorithm
 // All moves are allowed but penalized by overlap area
 // Uses incremental overlap calculation for efficiency (only recalculates for the perturbed tree)
-func (sa *SimulatedAnnealingPenalty) SolvePenalty() (float64, []ChristmasTree) {
+func (sa *SimulatedAnnealingPenalty) SolvePenalty() (float64, []tree.ChristmasTree) {
 	startTime := time.Now()
 
 	T := sa.Config.Tmax
 	currentTrees := CloneTrees(sa.Trees)
 
 	// Calculate initial state
-	currentBBox := CalculateSideLength(currentTrees)
-	currentOverlap := CalculateTotalOverlap(currentTrees)
+	currentBBox := tree.CalculateSideLength(currentTrees)
+	currentOverlap := tree.CalculateTotalOverlap(currentTrees)
 	currentScore := currentBBox + sa.Config.OverlapPenalty*currentOverlap
 
 	bestBBoxScore := currentBBox
@@ -47,16 +49,16 @@ func (sa *SimulatedAnnealingPenalty) SolvePenalty() (float64, []ChristmasTree) {
 			i := sa.Rng.Intn(len(currentTrees))
 
 			// Calculate overlap BEFORE perturbation (only for tree i)
-			oldTreeOverlap := CalculateTreeOverlap(currentTrees, i)
+			oldTreeOverlap := tree.CalculateTreeOverlap(currentTrees, i)
 
 			// Perturb the tree
 			oldX, oldY, oldAngle := sa.PerturbTree(&currentTrees[i])
 
 			// Calculate overlap AFTER perturbation (only for tree i)
-			newTreeOverlap := CalculateTreeOverlap(currentTrees, i)
+			newTreeOverlap := tree.CalculateTreeOverlap(currentTrees, i)
 
 			// Calculate new bounding box
-			newBBox := CalculateSideLength(currentTrees)
+			newBBox := tree.CalculateSideLength(currentTrees)
 
 			// Incremental overlap update: totalOverlap - oldContribution + newContribution
 			newOverlap := currentOverlap - oldTreeOverlap + newTreeOverlap
@@ -70,7 +72,7 @@ func (sa *SimulatedAnnealingPenalty) SolvePenalty() (float64, []ChristmasTree) {
 				currentBBox = newBBox
 				currentOverlap = newOverlap
 
-				// Track best valid (collision-free) solution
+				// Track the best valid (collision-free) solution
 				if newOverlap == 0 && newBBox < bestBBoxScore {
 					bestBBoxScore = newBBox
 					bestScore = newBBox

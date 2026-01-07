@@ -7,15 +7,19 @@ Greedy, Grid, and Simulated Annealing algorithms for the Kaggle tree packing cha
 ```
 golang/
 ├── cmd/packer/main.go           # CLI entry point
-├── pkg/tree/
-│   ├── tree.go                  # ChristmasTree struct + geometry
-│   ├── scoring.go               # Collision detection & scoring utilities
-│   ├── sa_config.go             # SA configuration types & loading
-│   ├── sa_base.go               # Shared SA functionality (perturbation, cooling)
-│   ├── sa_collision_free.go     # SA variant: rejects moves causing collisions
-│   ├── sa_penalty.go            # SA variant: allows overlaps with penalty scoring
-│   ├── greedy.go                # Greedy placement algorithm
-│   └── grid.go                  # Grid-based placement
+├── cmd/packer/main.go           # CLI entry point
+├── pkg/
+│   ├── tree/                    # Domain model
+│   │   ├── model.go             # ChristmasTree struct
+│   │   ├── geometry.go          # Geometry calculations
+│   │   ├── intersection.go      # Intersection logic
+│   │   ├── defaults.go          # Constants
+│   │   ├── ops.go               # Tree operations (Overlap, Bounds)
+│   │   └── evaluation.go        # Scoring functions
+│   └── solvers/                 # Optimization algorithms
+│       ├── greedy/              # Greedy placement
+│       ├── grid/                # Grid-based placement
+│       └── sa/                  # Simulated Annealing variants
 ├── sa_config.yaml               # SA configuration file
 └── go.mod
 ```
@@ -40,6 +44,18 @@ go build -o packer ./cmd/packer
 
 # Run with grid + SA optimization
 ./packer -algorithm grid-sa -n 200 -output submission.csv
+
+# Run with penalty-based SA
+./packer -algorithm sa-penalty -config sa_config.yaml -n 200 -output submission.csv
+
+# Run with advanced SA
+./packer -algorithm sa-advanced -config sa_config.yaml -n 200 -output submission.csv
+
+# Run with advanced SA with Penalty
+./packer -algorithm sa-advanced-penalty -config sa_config.yaml -n 200 -output submission.csv
+
+# Run with grid + penalty-based SA
+./packer -algorithm grid-sa-penalty -config sa_config.yaml -n 200 -output submission.csv
 ```
 
 ### Windows (PowerShell)
@@ -66,7 +82,7 @@ go build -o packer.exe ./cmd/packer
 
 | Flag         | Default                                    | Description                                     |
 | ------------ | ------------------------------------------ | ----------------------------------------------- |
-| `-algorithm` | `greedy`                                   | Algorithm: `greedy`, `sa`, `grid`, or `grid-sa` |
+| `-algorithm` | `greedy`                                   | `greedy`, `sa`, `sa-penalty`, `sa-advanced`, `grid`, `grid-sa`, `grid-sa-penalty`, `sa-advanced-penalty` |
 | `-config`    | _(none)_                                   | Path to SA config YAML file                     |
 | `-n`         | `200`                                      | Number of trees to pack                         |
 | `-output`    | `../../results/submissions/submission.csv` | Output CSV file path                            |
@@ -74,20 +90,20 @@ go build -o packer.exe ./cmd/packer
 
 ## Algorithms
 
-### Greedy Placement (`greedy.go`)
+### Greedy Placement (`pkg/solvers/greedy/greedy.go`)
 
 1. Progressive packing from 1 to N trees
 2. For each new tree: try 10 random angles, move inward until collision
 3. R-tree spatial index for O(log n) collision queries
 
-### Grid Placement (`grid.go`)
+### Grid Placement (`pkg/solvers/grid/grid.go`)
 
 1. Places trees in alternating rows with staggered X offsets
 2. Even rows: angle 0°, odd rows: angle 180° (inverted trees)
 3. Horizontal spacing: 0.7 units, odd row X offset: 0.35
 4. Tries different row configurations to find optimal packing
 
-### Simulated Annealing - Collision Free (`sa_collision_free.go`)
+### Simulated Annealing - Collision Free (`pkg/solvers/sa/collision_free.go`)
 
 1. Start with greedy or grid solution
 2. Perturb random tree's position/angle
@@ -95,7 +111,7 @@ go build -o packer.exe ./cmd/packer
 4. Accept better solutions or worse ones with probability exp(-Δ/T)
 5. Cool temperature using linear/exponential/polynomial schedule
 
-### Simulated Annealing - Penalty Based (`sa_penalty.go`)
+### Simulated Annealing - Penalty Based (`pkg/solvers/sa/penalty.go`)
 
 1. Start with greedy or grid solution
 2. Perturb random tree's position/angle
