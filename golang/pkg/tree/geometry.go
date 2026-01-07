@@ -1,5 +1,3 @@
-// Package tree implements Christmas tree geometry and packing algorithms
-// for the Kaggle Tree Packing Challenge.
 package tree
 
 import (
@@ -8,13 +6,6 @@ import (
 	"github.com/engelsjk/polygol"
 	"github.com/paulmach/orb"
 )
-
-// ChristmasTree represents a single tree with position and rotation
-type ChristmasTree struct {
-	ID    int
-	X, Y  float64
-	Angle float64 // Angle in DEGREES (Kaggle submission format)
-}
 
 // deg2rad converts degrees to radians
 func deg2rad(deg float64) float64 {
@@ -50,20 +41,6 @@ func (t *ChristmasTree) GetBoundingBox() (float64, float64, float64, float64) {
 
 // GetOrbPolygon returns an orb.Polygon representing the tree outline
 func (t *ChristmasTree) GetOrbPolygon() orb.Polygon {
-	// Tree dimensions
-	const (
-		TrunkW       = 0.15
-		TrunkH       = 0.2
-		BaseW        = 0.7
-		MidW         = 0.4
-		TopW         = 0.25
-		TipY         = 0.8
-		Tier1Y       = 0.5
-		Tier2Y       = 0.25
-		BaseY        = 0.0
-		TrunkBottomY = -TrunkH
-	)
-
 	// Create the outer ring of the polygon (COUNTER-CLOCKWISE for polygol)
 	// CCW order: tip -> left side down -> trunk -> right side up -> tip
 	ring := orb.Ring{
@@ -117,27 +94,6 @@ func (t *ChristmasTree) GetOrbPolygon() orb.Polygon {
 	}
 
 	return orb.Polygon{ring}
-}
-
-// Intersect checks if this tree intersects with another tree
-func (t *ChristmasTree) Intersect(other *ChristmasTree) bool {
-	poly1 := t.GetOrbPolygon()
-	poly2 := other.GetOrbPolygon()
-
-	// Convert orb.Polygon to polygol.Geom format
-	geom1 := orbPolygonToGeom(poly1)
-	geom2 := orbPolygonToGeom(poly2)
-
-	// Use polygol to compute intersection
-	intersection, err := polygol.Intersection(geom1, geom2)
-	if err != nil {
-		// If there's an error, assume no intersection
-		return false
-	}
-
-	// Check if intersection is not empty
-	// An empty intersection means no overlap
-	return len(intersection) > 0 && len(intersection[0]) > 0
 }
 
 // orbPolygonToGeom converts an orb.Polygon to polygol.Geom format
