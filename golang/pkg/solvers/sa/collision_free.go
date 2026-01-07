@@ -40,7 +40,7 @@ func (sa *SimulatedAnnealing) Solve() (float64, []tree.ChristmasTree) {
 			// Check for collision - reject if collision detected
 			if tree.HasCollision(currentTrees) {
 				sa.RestoreTree(&currentTrees[i], oldX, oldY, oldAngle)
-				if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
+				if step1%sa.Config.LogFreq == 0 {
 					elapsed := FormatDuration(time.Since(startTime))
 					fmt.Printf("[Trees: %d]T: %.3f  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
 						len(currentTrees), T, step1, currentScore, bestScore, elapsed)
@@ -63,7 +63,7 @@ func (sa *SimulatedAnnealing) Solve() (float64, []tree.ChristmasTree) {
 				sa.RestoreTree(&currentTrees[i], oldX, oldY, oldAngle)
 			}
 
-			if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
+			if step1%sa.Config.LogFreq == 0 {
 				elapsed := FormatDuration(time.Since(startTime))
 				fmt.Printf("[n=%3d] T: %.3e  Step: %6d  Score: %8.5f  Best: %8.5f  Time: %s\n",
 					len(currentTrees), T, step1, currentScore, bestScore, elapsed)
