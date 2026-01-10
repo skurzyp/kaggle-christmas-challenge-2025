@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"sync"
@@ -33,7 +34,7 @@ func main() {
 	algorithm := flag.String("algorithm", "greedy", "Algorithm: greedy, sa, sa-penalty, sa-advanced, grid, grid-sa, grid-sa-penalty")
 	configPath := flag.String("config", "", "Path to SA config YAML file (optional, uses defaults if not provided)")
 	numTrees := flag.Int("n", 200, "Number of trees to pack")
-	output := flag.String("output", "../../results/submissions/submission.csv", "Output CSV file path")
+	output := flag.String("output", "../results/submissions/submission.csv", "Output CSV file path")
 	seed := flag.Int64("seed", 0, "Random seed (0 = use current time)")
 
 	flag.Parse()
@@ -66,6 +67,8 @@ func main() {
 		treeData = runAdvancedSA(*numTrees, *configPath)
 	case "sa-advanced-penalty":
 		treeData = runAdvancedSAPenalty(*numTrees, *configPath)
+	case "grid-ga":
+		treeData = runGridGA(*numTrees)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s\n", *algorithm)
 		os.Exit(1)
@@ -234,6 +237,11 @@ func formatTree(n, idx int, t tree.ChristmasTree) []string {
 
 // writeCSV writes tree data to a CSV file
 func writeCSV(path string, data [][]string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
+
 	file, err := os.Create(path)
 	if err != nil {
 		return err
@@ -248,4 +256,12 @@ func writeCSV(path string, data [][]string) error {
 	}
 
 	return writer.WriteAll(data)
+}
+
+// runGridGA runs the genetic algorithm grid placement in parallel
+func runGridGA(numTrees int) [][]string {
+	return runParallel(numTrees, "", "Grid GA", func(n int, _ *sa.Config) (float64, []tree.ChristmasTree) {
+		score, trees := grid.FindBestGridGASolution(n)
+		return score, trees
+	})
 }

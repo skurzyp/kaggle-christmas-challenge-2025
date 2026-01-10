@@ -56,6 +56,9 @@ go build -o packer ./cmd/packer
 
 # Run with grid + penalty-based SA
 ./packer -algorithm grid-sa-penalty -config sa_config.yaml -n 200 -output submission.csv
+
+# Run with advanced grid placement
+./packer -algorithm advanced-grid -n 200 -output submission.csv
 ```
 
 ### Windows (PowerShell)
