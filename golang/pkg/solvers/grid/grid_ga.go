@@ -43,7 +43,7 @@ func FindBestGridGASolution(numTrees int) (float64, []tree.ChristmasTree) {
 	fmt.Printf("Running Block-Based Grid GA Solver for N=%d...\n", numTrees)
 
 	// Initialize Population
-	pop := initPopulation(numTrees)
+	pop := initPopulation()
 
 	var bestInd GridIndividual
 	bestInd.Score = math.MaxFloat64
@@ -86,7 +86,7 @@ func FindBestGridGASolution(numTrees int) (float64, []tree.ChristmasTree) {
 }
 
 // FIXME: unused n param?
-func initPopulation(n int) []GridIndividual {
+func initPopulation() []GridIndividual {
 	pop := make([]GridIndividual, PopulationSize)
 	for i := range pop {
 		// Heuristic initialization for angles and offsets
