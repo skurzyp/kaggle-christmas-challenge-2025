@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"tree-packing-challenge/pkg/tree"
+
+	"github.com/tidwall/rtree"
 )
 
 // GridIndividual represents a candidate solution with simplified genome.
@@ -205,6 +207,7 @@ func countCollisions(trees []tree.ChristmasTree) int {
 // This exploits the grid structure: if the first tree of block N can move X,
 // then all trees in blocks N and beyond can move X together.
 // Similarly for rows: if the first block of row N can move Y, all rows N+ can move Y.
+// Uses R-tree for efficient collision detection.
 func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.ChristmasTree {
 	if len(trees) <= 2 || blocksPerRow <= 0 {
 		return trees
@@ -219,22 +222,58 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 
 	treesPerRow := blocksPerRow * 2
 
+	// Build R-tree for collision detection
+	buildRTree := func(trees []tree.ChristmasTree) rtree.RTree {
+		tr := rtree.RTree{}
+		for i := range trees {
+			minX, minY, maxX, maxY := trees[i].GetBoundingBox()
+			tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, i)
+		}
+		return tr
+	}
+
+	// Check if a tree collides with non-affected trees using R-tree
+	checkCollision := func(tr *rtree.RTree, candidate tree.ChristmasTree, affectedSet map[int]bool, allTrees []tree.ChristmasTree) bool {
+		minX, minY, maxX, maxY := candidate.GetBoundingBox()
+		collision := false
+
+		tr.Search(
+			[2]float64{minX, minY},
+			[2]float64{maxX, maxY},
+			func(min, max [2]float64, data interface{}) bool {
+				j := data.(int)
+				if !affectedSet[j] && candidate.Intersect(&allTrees[j]) {
+					collision = true
+					return false // Stop searching
+				}
+				return true
+			},
+		)
+		return collision
+	}
+
 	// Compact columns (blocks) left - starting from block 1 (trees 2,3)
 	for block := 1; block < blocksPerRow; block++ {
 		// Get indices of all trees from this block onwards in all rows
 		affectedIndices := []int{}
+		affectedSet := make(map[int]bool)
 		for row := 0; row*treesPerRow < len(result); row++ {
 			for b := block; b < blocksPerRow; b++ {
 				treeIdxA := row*treesPerRow + b*2
 				treeIdxB := row*treesPerRow + b*2 + 1
 				if treeIdxA < len(result) {
 					affectedIndices = append(affectedIndices, treeIdxA)
+					affectedSet[treeIdxA] = true
 				}
 				if treeIdxB < len(result) {
 					affectedIndices = append(affectedIndices, treeIdxB)
+					affectedSet[treeIdxB] = true
 				}
 			}
 		}
+
+		// Build R-tree with current positions
+		tr := buildRTree(result)
 
 		// Slide all affected trees left together
 		for iter := 0; iter < maxIterations; iter++ {
@@ -244,21 +283,8 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 				candidate := result[idx]
 				candidate.X -= step
 
-				// Check collision only with trees NOT being moved
-				for j := 0; j < len(result); j++ {
-					isAffected := false
-					for _, ai := range affectedIndices {
-						if j == ai {
-							isAffected = true
-							break
-						}
-					}
-					if !isAffected && candidate.Intersect(&result[j]) {
-						canMove = false
-						break
-					}
-				}
-				if !canMove {
+				if checkCollision(&tr, candidate, affectedSet, result) {
+					canMove = false
 					break
 				}
 			}
@@ -271,6 +297,9 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 			for _, idx := range affectedIndices {
 				result[idx].X -= step
 			}
+
+			// Since positions changed, rebuild R-tree
+			tr = buildRTree(result)
 		}
 	}
 
@@ -279,6 +308,7 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 	for row := 1; row < numRows; row++ {
 		// Get indices of all trees from this row onwards
 		affectedIndices := []int{}
+		affectedSet := make(map[int]bool)
 		for r := row; r < numRows; r++ {
 			startIdx := r * treesPerRow
 			endIdx := startIdx + treesPerRow
@@ -287,8 +317,12 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 			}
 			for idx := startIdx; idx < endIdx; idx++ {
 				affectedIndices = append(affectedIndices, idx)
+				affectedSet[idx] = true
 			}
 		}
+
+		// Build R-tree with current positions
+		tr := buildRTree(result)
 
 		// Slide all affected trees up together
 		for iter := 0; iter < maxIterations; iter++ {
@@ -298,21 +332,8 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 				candidate := result[idx]
 				candidate.Y -= step
 
-				// Check collision only with trees NOT being moved
-				for j := 0; j < len(result); j++ {
-					isAffected := false
-					for _, ai := range affectedIndices {
-						if j == ai {
-							isAffected = true
-							break
-						}
-					}
-					if !isAffected && candidate.Intersect(&result[j]) {
-						canMove = false
-						break
-					}
-				}
-				if !canMove {
+				if checkCollision(&tr, candidate, affectedSet, result) {
+					canMove = false
 					break
 				}
 			}
@@ -325,6 +346,9 @@ func compactTrees(trees []tree.ChristmasTree, blocksPerRow int) []tree.Christmas
 			for _, idx := range affectedIndices {
 				result[idx].Y -= step
 			}
+
+			// Since positions changed, rebuild R-tree
+			tr = buildRTree(result)
 		}
 	}
 
@@ -380,9 +404,10 @@ func calculateOptimalLayout(numBlocks int, blockWidth, blockHeight float64) (int
 	return bestPerRow, bestRows
 }
 
-// generateTreesWithCollisionCheck creates trees and verifies no collisions
+// generateTreesWithCollisionCheck creates trees and verifies no collisions using R-tree
 func generateTreesWithCollisionCheck(angle, dx, dy float64, blocksPerRow, numRows int, blockWidth, blockHeight float64, targetN int) []tree.ChristmasTree {
 	trees := make([]tree.ChristmasTree, 0, targetN)
+	tr := rtree.RTree{} // R-tree for fast collision detection
 	cnt := 0
 
 	for row := 0; row < numRows && cnt < targetN; row++ {
@@ -400,8 +425,11 @@ func generateTreesWithCollisionCheck(angle, dx, dy float64, blocksPerRow, numRow
 			}
 
 			// Check collision with existing trees before adding
-			if !checkTreeCollision(tA, trees) {
+			if !checkTreeCollisionRTree(tA, trees, &tr) {
 				trees = append(trees, tA)
+				// Add to R-tree
+				minX, minY, maxX, maxY := tA.GetBoundingBox()
+				tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, len(trees)-1)
 				cnt++
 			}
 
@@ -418,8 +446,11 @@ func generateTreesWithCollisionCheck(angle, dx, dy float64, blocksPerRow, numRow
 			}
 
 			// Check collision with existing trees before adding
-			if !checkTreeCollision(tB, trees) {
+			if !checkTreeCollisionRTree(tB, trees, &tr) {
 				trees = append(trees, tB)
+				// Add to R-tree
+				minX, minY, maxX, maxY := tB.GetBoundingBox()
+				tr.Insert([2]float64{minX, minY}, [2]float64{maxX, maxY}, len(trees)-1)
 				cnt++
 			}
 		}
@@ -428,14 +459,24 @@ func generateTreesWithCollisionCheck(angle, dx, dy float64, blocksPerRow, numRow
 	return trees
 }
 
-// checkTreeCollision checks if a tree collides with any existing trees
-func checkTreeCollision(t tree.ChristmasTree, existing []tree.ChristmasTree) bool {
-	for i := range existing {
-		if t.Intersect(&existing[i]) {
+// checkTreeCollisionRTree checks if a tree collides with existing trees using R-tree
+func checkTreeCollisionRTree(t tree.ChristmasTree, existing []tree.ChristmasTree, tr *rtree.RTree) bool {
+	minX, minY, maxX, maxY := t.GetBoundingBox()
+	collision := false
+
+	tr.Search(
+		[2]float64{minX, minY},
+		[2]float64{maxX, maxY},
+		func(min, max [2]float64, data interface{}) bool {
+			idx := data.(int)
+			if t.Intersect(&existing[idx]) {
+				collision = true
+				return false // Stop searching
+			}
 			return true
-		}
-	}
-	return false
+		},
+	)
+	return collision
 }
 
 func tournamentSelection(pop []GridIndividual) GridIndividual {
