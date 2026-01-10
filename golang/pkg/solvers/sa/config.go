@@ -58,17 +58,17 @@ func LoadConfig(path string) (*Config, error) {
 // DefaultConfig returns a default SA configuration
 func DefaultConfig() *Config {
 	return &Config{
-		Tmax:           0.0002,
-		Tmin:           0.00001,
-		NSteps:         10,
-		NStepsPerT:     100,
+		Tmax:           20.0, // Higher temperature to allow initial overlaps
+		Tmin:           1e-6, // Lower minimum temperature for fine-tuning
+		NSteps:         500,  // More temperature steps
+		NStepsPerT:     100,  // More iterations per temperature (Total: 1M steps)
 		Cooling:        CoolingExponential,
 		Alpha:          0.99,
 		N:              4,
-		PositionDelta:  0.01,
-		AngleDelta:     30.0,
-		RandomSeed:     42,
-		LogFreq:        100,
-		OverlapPenalty: 10.0,
+		PositionDelta:  0.05, // Slightly larger initial moves
+		AngleDelta:     15.0,
+		RandomSeed:     0,
+		LogFreq:        10000, // Logging frequency
+		OverlapPenalty: 50.0,  // Stronger penalty to enforce valid solutions eventually
 	}
 }

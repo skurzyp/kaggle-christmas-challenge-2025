@@ -83,7 +83,7 @@ func (sa *SimulatedAnnealingPenalty) SolvePenalty() (float64, []tree.ChristmasTr
 				sa.RestoreTree(&currentTrees[i], oldX, oldY, oldAngle)
 			}
 
-			if step1%sa.Config.LogFreq == 0 || step1 == (sa.Config.NStepsPerT-1) {
+			if step1%sa.Config.LogFreq == 0 {
 				elapsed := FormatDuration(time.Since(startTime))
 				fmt.Printf("[n=%3d] T: %.3e  Step: %6d  Score: %8.5f  Overlap: %6.4f  Best: %8.5f  Time: %s\n",
 					len(currentTrees), T, step1, currentScore, currentOverlap, bestBBoxScore, elapsed)

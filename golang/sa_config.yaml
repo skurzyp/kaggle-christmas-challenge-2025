@@ -1,11 +1,11 @@
 params:
   # Temperature schedule
-  Tmax: 0.0002
-  Tmin: 0.00005
+  Tmax: 20
+  Tmin: 1e-6
 
   # Iteration counts
-  nsteps: 20 # Outer temperature steps
-  nsteps_per_T: 100 # Inner steps per temperature
+  nsteps: 500 # Outer temperature steps
+  nsteps_per_T: 2000 # Inner steps per temperature (Total 1M steps)
 
   # Cooling schedule: "linear", "exponential", or "polynomial"
   cooling: "exponential"
@@ -13,12 +13,11 @@ params:
   n: 4 # Polynomial exponent (only used if cooling=polynomial)
 
   # Perturbation deltas
-  position_delta: 0.01
-  angle_delta: 180.0
-
+  position_delta: 0.05
+  angle_delta: 15
   # Misc
-  random_state: 42
-  log_freq: 250
+  random_state: 0
+  log_freq: 10000
 
   # Penalty-based SA
-  overlap_penalty: 10.0 # λ multiplier for overlap area in score
+  overlap_penalty: 50.0 # λ multiplier for overlap area in score
