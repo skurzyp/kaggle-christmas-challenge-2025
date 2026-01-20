@@ -35,7 +35,6 @@ func RunAdvancedSAPenalty(initialTrees []tree.ChristmasTree, config *Config) []t
 
 	iter := config.NSteps * config.NStepsPerT
 	T := config.Tmax
-	alpha := math.Pow(config.Tmin/config.Tmax, 1.0/float64(iter))
 
 	// Helper to update best valid
 	updateBest := func() {
@@ -237,9 +236,10 @@ func RunAdvancedSAPenalty(initialTrees []tree.ChristmasTree, config *Config) []t
 				T, it, curScore, curOverlap, bestValidScore, elapsed)
 		}
 
-		T *= alpha
-		if T < config.Tmin {
-			T = config.Tmin
+		// Cool temperature
+		if (it+1)%config.NStepsPerT == 0 {
+			step := it / config.NStepsPerT
+			T = GetNextTemperature(config, T, step)
 		}
 	}
 

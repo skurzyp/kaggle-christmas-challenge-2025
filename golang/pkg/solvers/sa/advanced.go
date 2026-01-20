@@ -231,16 +231,15 @@ func PerturbAdvanced(trees []tree.ChristmasTree, str float64, rng *rand.Rand) []
 }
 
 // RunAdvancedSA runs the advanced Simulated Annealing optimization
-func RunAdvancedSA(initialTrees []tree.ChristmasTree, iter int, t0, tm float64, seed int64) []tree.ChristmasTree {
-	rng := rand.New(rand.NewSource(seed))
+func RunAdvancedSA(initialTrees []tree.ChristmasTree, config *Config) []tree.ChristmasTree {
+	rng := rand.New(rand.NewSource(config.RandomSeed))
 	c := CloneTrees(initialTrees)
 	best := CloneTrees(c)
 	cur := CloneTrees(c)
 
 	bs := tree.Side(best)
 	cs := bs
-	T := t0
-	alpha := math.Pow(tm/t0, 1.0/float64(iter))
+	T := config.Tmax
 	noImp := 0
 
 	n := len(c)
@@ -248,9 +247,14 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, iter int, t0, tm float64, 
 		return c
 	}
 
+	iter := config.NSteps * config.NStepsPerT
+
+	// Track total steps for cooling schedule
+	step := 0
 	for it := 0; it < iter; it++ {
+		step++
 		mt := rng.Intn(11) // 0-10 move types
-		sc := T / t0
+		sc := T / config.Tmax
 		valid := true
 		savedCur := CloneTrees(cur) // Save state before mutation
 
@@ -323,7 +327,7 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, iter int, t0, tm float64, 
 			gx0, gy0, gx1, gy1 := tree.GetBounds(cur)
 			cx := (gx0 + gx1) / 2.0
 			cy := (gy0 + gy1) / 2.0
-			
+
 			// We need to apply this to all trees, so we can't just modify cur in place without backup
 			// But we already backed up to savedCur
 			for i := range cur {
@@ -389,9 +393,11 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, iter int, t0, tm float64, 
 		if !valid {
 			cur = savedCur // Revert
 			noImp++
-			T *= alpha
-			if T < tm {
-				T = tm
+
+			// Cool temperature if step reached
+			if (it+1)%config.NStepsPerT == 0 {
+				step := it / config.NStepsPerT
+				T = GetNextTemperature(config, T, step)
 			}
 			continue
 		}
@@ -415,13 +421,10 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, iter int, t0, tm float64, 
 			noImp++
 		}
 
-		if noImp > 200 {
-			T = math.Min(T*5.0, t0)
-			noImp = 0
-		}
-		T *= alpha
-		if T < tm {
-			T = tm
+		// Cool temperature
+		if (it+1)%config.NStepsPerT == 0 {
+			step := it / config.NStepsPerT
+			T = GetNextTemperature(config, T, step)
 		}
 	}
 

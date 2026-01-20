@@ -8,7 +8,7 @@ params:
   nsteps_per_T: 2000 # Inner steps per temperature (Total 1M steps)
 
   # Cooling schedule: "linear", "exponential", or "polynomial"
-  cooling: "exponential"
+  cooling: "polynomial"
   alpha: 0.99
   n: 4 # Polynomial exponent (only used if cooling=polynomial)
 
@@ -16,8 +16,8 @@ params:
   position_delta: 0.05
   angle_delta: 15
   # Misc
-  random_state: 0
-  log_freq: 10000
+  random_state: 23333
+  log_freq: 100000
 
   # Penalty-based SA
-  overlap_penalty: 50.0 # λ multiplier for overlap area in score
+  overlap_penalty: 20.0 # λ multiplier for overlap area in score
