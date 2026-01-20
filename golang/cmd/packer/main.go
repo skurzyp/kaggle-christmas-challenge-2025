@@ -66,29 +66,29 @@ func main() {
 
 	switch *algorithm {
 	case "greedy":
-		treeData = runGreedy(*numTrees, startingPoints)
+		treeData = runGreedy(*numTrees, *output, startingPoints)
 	case "sa":
-		treeData = runSimulatedAnnealing(*numTrees, *configPath, false, startingPoints)
+		treeData = runSimulatedAnnealing(*numTrees, *configPath, *output, false, startingPoints)
 	case "sa-penalty":
-		treeData = runSimulatedAnnealing(*numTrees, *configPath, true, startingPoints)
+		treeData = runSimulatedAnnealing(*numTrees, *configPath, *output, true, startingPoints)
 	case "grid":
-		treeData = runGrid(*numTrees, startingPoints)
+		treeData = runGrid(*numTrees, *output, startingPoints)
 	case "grid-sa":
-		treeData = runGridSA(*numTrees, *configPath, false, startingPoints)
+		treeData = runGridSA(*numTrees, *configPath, *output, false, startingPoints)
 	case "grid-sa-penalty":
-		treeData = runGridSA(*numTrees, *configPath, true, startingPoints)
+		treeData = runGridSA(*numTrees, *configPath, *output, true, startingPoints)
 	case "sa-advanced":
-		treeData = runAdvancedSA(*numTrees, *configPath, startingPoints)
+		treeData = runAdvancedSA(*numTrees, *configPath, *output, startingPoints)
 	case "sa-advanced-penalty":
-		treeData = runAdvancedSAPenalty(*numTrees, *configPath, startingPoints)
+		treeData = runAdvancedSAPenalty(*numTrees, *configPath, *output, startingPoints)
 	case "grid-ga":
-		treeData = runGridGA(*numTrees, startingPoints)
+		treeData = runGridGA(*numTrees, *output, startingPoints)
 	default:
 		fmt.Fprintf(os.Stderr, "Unknown algorithm: %s\n", *algorithm)
 		os.Exit(1)
 	}
 
-	// Write CSV output
+	// Write CSV output (final write to ensure everything is saved)
 	if err := writeCSV(*output, treeData); err != nil {
 		fmt.Fprintf(os.Stderr, "Error writing CSV: %v\n", err)
 		os.Exit(1)
@@ -98,7 +98,7 @@ func main() {
 }
 
 // runParallel executes the given solver in parallel for all n from 1 to numTrees
-func runParallel(numTrees int, configPath string, algoName string, startingPoints map[int][]tree.ChristmasTree, solver SolverFunc) [][]string {
+func runParallel(numTrees int, configPath string, outputPath string, algoName string, startingPoints map[int][]tree.ChristmasTree, solver SolverFunc) [][]string {
 	config := loadConfig(configPath)
 	numWorkers := runtime.NumCPU()
 	fmt.Printf("Running %s in parallel with %d workers\n", algoName, numWorkers)
@@ -141,10 +141,40 @@ func runParallel(numTrees int, configPath string, algoName string, startingPoint
 		close(results)
 	}()
 
+	// Construct intermediate file path
+	dir := filepath.Dir(outputPath)
+	base := filepath.Base(outputPath)
+	intermediatePath := filepath.Join(dir, "intermediate_"+base)
+
 	var allResults []Result
+	count := 0
 	for result := range results {
 		fmt.Printf("%s: n=%d, score=%.5f\n", algoName, result.N, result.Score)
 		allResults = append(allResults, result)
+		count++
+
+		// Intermediate saving every 10 iterations
+		if count%10 == 0 {
+			// Sort results by N
+			sortedResults := make([]Result, len(allResults))
+			copy(sortedResults, allResults)
+			sort.Slice(sortedResults, func(i, j int) bool {
+				return sortedResults[i].N < sortedResults[j].N
+			})
+
+			// Prepare data for CSV
+			var intermediateData [][]string
+			for _, r := range sortedResults {
+				intermediateData = append(intermediateData, r.TreeData...)
+			}
+
+			// Write to intermediate CSV
+			if err := writeCSV(intermediatePath, intermediateData); err != nil {
+				fmt.Fprintf(os.Stderr, "Warning: failed to write intermediate results: %v\n", err)
+			} else {
+				fmt.Printf("Saved intermediate results (%d/%d) to %s\n", count, numTrees, intermediatePath)
+			}
+		}
 	}
 
 	sort.Slice(allResults, func(i, j int) bool {
@@ -160,8 +190,8 @@ func runParallel(numTrees int, configPath string, algoName string, startingPoint
 }
 
 // runGreedy runs the greedy placement algorithm in parallel
-func runGreedy(numTrees int, startingPoints map[int][]tree.ChristmasTree) [][]string {
-	return runParallel(numTrees, "", "Greedy", startingPoints, func(n int, _ *sa.Config, _ []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+func runGreedy(numTrees int, outputPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
+	return runParallel(numTrees, "", outputPath, "Greedy", startingPoints, func(n int, _ *sa.Config, _ []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		trees, sideLength := greedy.InitializeTrees(n, nil)
 		return sideLength, trees
 	})
@@ -181,13 +211,13 @@ func loadConfig(configPath string) *sa.Config {
 }
 
 // runSimulatedAnnealing runs SA optimization in parallel
-func runSimulatedAnnealing(numTrees int, configPath string, usePenalty bool, startingPoints map[int][]tree.ChristmasTree) [][]string {
+func runSimulatedAnnealing(numTrees int, configPath string, outputPath string, usePenalty bool, startingPoints map[int][]tree.ChristmasTree) [][]string {
 	algoName := "SA"
 	if usePenalty {
 		algoName = "SA-Penalty"
 	}
 
-	return runParallel(numTrees, configPath, algoName, startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+	return runParallel(numTrees, configPath, outputPath, algoName, startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		var initialTrees []tree.ChristmasTree
 		if len(startNodes) > 0 {
 			initialTrees = startNodes // copy? usually safe to use as is if solver doesn't mutate in place blindly
@@ -205,8 +235,8 @@ func runSimulatedAnnealing(numTrees int, configPath string, usePenalty bool, sta
 }
 
 // runGrid runs the grid-based placement algorithm in parallel
-func runGrid(numTrees int, startingPoints map[int][]tree.ChristmasTree) [][]string {
-	return runParallel(numTrees, "", "Grid", startingPoints, func(n int, _ *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+func runGrid(numTrees int, outputPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
+	return runParallel(numTrees, "", outputPath, "Grid", startingPoints, func(n int, _ *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		if len(startNodes) > 0 {
 			// If provided, just evaluate them
 			return tree.CalculateScore(startNodes), startNodes
@@ -217,13 +247,13 @@ func runGrid(numTrees int, startingPoints map[int][]tree.ChristmasTree) [][]stri
 }
 
 // runGridSA runs grid-based initialization followed by SA optimization in parallel
-func runGridSA(numTrees int, configPath string, usePenalty bool, startingPoints map[int][]tree.ChristmasTree) [][]string {
+func runGridSA(numTrees int, configPath string, outputPath string, usePenalty bool, startingPoints map[int][]tree.ChristmasTree) [][]string {
 	algoName := "Grid+SA"
 	if usePenalty {
 		algoName = "Grid+SA-Penalty"
 	}
 
-	return runParallel(numTrees, configPath, algoName, startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+	return runParallel(numTrees, configPath, outputPath, algoName, startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		var gridTrees []tree.ChristmasTree
 		if len(startNodes) > 0 {
 			gridTrees = startNodes
@@ -241,8 +271,8 @@ func runGridSA(numTrees int, configPath string, usePenalty bool, startingPoints 
 }
 
 // runAdvancedSA runs the advanced SA algorithm in parallel
-func runAdvancedSA(numTrees int, configPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
-	return runParallel(numTrees, configPath, "Advanced SA", startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+func runAdvancedSA(numTrees int, configPath string, outputPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
+	return runParallel(numTrees, configPath, outputPath, "Advanced SA", startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		var initialTrees []tree.ChristmasTree
 		if len(startNodes) > 0 {
 			initialTrees = startNodes
@@ -256,8 +286,8 @@ func runAdvancedSA(numTrees int, configPath string, startingPoints map[int][]tre
 }
 
 // runAdvancedSAPenalty runs the advanced SA algorithm with penalty
-func runAdvancedSAPenalty(numTrees int, configPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
-	return runParallel(numTrees, configPath, "Advanced SA Penalty", startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+func runAdvancedSAPenalty(numTrees int, configPath string, outputPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
+	return runParallel(numTrees, configPath, outputPath, "Advanced SA Penalty", startingPoints, func(n int, config *sa.Config, startNodes []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		var initialTrees []tree.ChristmasTree
 		if len(startNodes) > 0 {
 			initialTrees = startNodes
@@ -303,8 +333,8 @@ func writeCSV(path string, data [][]string) error {
 }
 
 // runGridGA runs the genetic algorithm grid placement in parallel
-func runGridGA(numTrees int, startingPoints map[int][]tree.ChristmasTree) [][]string {
-	return runParallel(numTrees, "", "Grid GA", startingPoints, func(n int, _ *sa.Config, _ []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
+func runGridGA(numTrees int, outputPath string, startingPoints map[int][]tree.ChristmasTree) [][]string {
+	return runParallel(numTrees, "", outputPath, "Grid GA", startingPoints, func(n int, _ *sa.Config, _ []tree.ChristmasTree) (float64, []tree.ChristmasTree) {
 		score, trees := grid.FindBestGridGASolution(n)
 		return score, trees
 	})
