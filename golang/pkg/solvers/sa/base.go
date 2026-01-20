@@ -57,15 +57,20 @@ func (sa *Base) RestoreTree(t *tree.ChristmasTree, x, y, angle float64) {
 
 // CoolTemperature applies the cooling schedule and returns the new temperature
 func (sa *Base) CoolTemperature(T float64, step int) float64 {
-	switch sa.Config.Cooling {
+	return GetNextTemperature(sa.Config, T, step)
+}
+
+// GetNextTemperature calculates the next temperature based on the config
+func GetNextTemperature(config *Config, T float64, step int) float64 {
+	switch config.Cooling {
 	case CoolingLinear:
-		return T - (sa.Config.Tmax-sa.Config.Tmin)/float64(sa.Config.NSteps)
+		return T - (config.Tmax-config.Tmin)/float64(config.NSteps)
 	case CoolingExponential:
-		Tfactor := -math.Log(sa.Config.Tmax / sa.Config.Tmin)
-		return sa.Config.Tmax * math.Exp(Tfactor*float64(step+1)/float64(sa.Config.NSteps))
+		Tfactor := -math.Log(config.Tmax / config.Tmin)
+		return config.Tmax * math.Exp(Tfactor*float64(step+1)/float64(config.NSteps))
 	case CoolingPolynomial:
-		progress := float64(sa.Config.NSteps-step-1) / float64(sa.Config.NSteps)
-		return sa.Config.Tmin + (sa.Config.Tmax-sa.Config.Tmin)*math.Pow(progress, sa.Config.N)
+		progress := float64(config.NSteps-step-1) / float64(config.NSteps)
+		return config.Tmin + (config.Tmax-config.Tmin)*math.Pow(progress, config.N)
 	}
 	return T
 }

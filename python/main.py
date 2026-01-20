@@ -245,6 +245,28 @@ def plot_trees(num_trees: int, submission_path: str):
     plt.close()
 
 
+def plot_scores(results: list):
+    """Plot score vs number of trees."""
+    if not results:
+        return
+
+    n_values = [r[0] for r in results]
+    scores = [float(r[2]) for r in results]
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(n_values, scores, marker='o', linestyle='-', markersize=2)
+    plt.xlabel('Size of Instance (N)')
+    plt.ylabel(r'Score ($x^2/n$)')
+    plt.title('Score vs Instance Size')
+    plt.grid(True, linestyle='--', alpha=0.7)
+    
+    # Save to results/images folder
+    output_path = '../results/images/scores.png'
+    plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    print(f"Score chart saved: {output_path}")
+    plt.close()
+
+
 def main():
     """Main function to visualize sample submissions."""
     parser = argparse.ArgumentParser(description='Visualize Christmas tree packing submissions')
@@ -270,6 +292,7 @@ def main():
     if args.score:
         # Calculate and display scores
         results, total = calculate_scores(submission_path, args.max_n)
+        plot_scores(results)
     
     tree_counts = args.trees
     

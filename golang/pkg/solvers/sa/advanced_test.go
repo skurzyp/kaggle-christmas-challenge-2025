@@ -55,7 +55,15 @@ func TestRunAdvancedSA(t *testing.T) {
 	}
 
 	// Run SA for a few iterations
-	result := RunAdvancedSA(trees, 10, 1.0, 0.1, 42)
+	conf := &Config{
+		Tmax:       1.0,
+		Tmin:       0.1,
+		RandomSeed: 42,
+		NSteps:     2,
+		NStepsPerT: 5,
+		Cooling:    CoolingExponential,
+	}
+	result := RunAdvancedSA(trees, conf)
 
 	if len(result) != len(trees) {
 		t.Errorf("Expected %d trees, got %d", len(trees), len(result))
