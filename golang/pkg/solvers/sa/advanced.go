@@ -329,7 +329,6 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, config *Config) []tree.Chr
 			cy := (gy0 + gy1) / 2.0
 
 			// We need to apply this to all trees, so we can't just modify cur in place without backup
-			// But we already backed up to savedCur
 			for i := range cur {
 				cur[i].X = cx + (cur[i].X-cx)*factor
 				cur[i].Y = cy + (cur[i].Y-cy)*factor
@@ -364,17 +363,11 @@ func RunAdvancedSA(initialTrees []tree.ChristmasTree, config *Config) []tree.Chr
 					valid = false
 				}
 			}
-		// Case 8, 9 skipped in C++? Or just not listed? Code jumps from 7 to 10 (V21 NEW).
-		// I will map case 8, 9 to "default small move" to be safe or just skip to 10 as per user code.
-		// User code has `else if (mt == 10 ...)` then `else ...`
-		// So mt 8, 9 go to `else` in C++.
+			// Case 8, 9 to be implemented
 		case 10:
 			if n > 1 {
 				i := rng.Intn(n)
 				j := rng.Intn(n)
-				// SwapTrees handles check internally but returns bool.
-				// However, SwapTrees modifies in place.
-				// We already cloned to cur, so we can use it.
 				if !tree.SwapTrees(cur, i, j) {
 					valid = false
 				}

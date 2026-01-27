@@ -110,7 +110,7 @@ func RemoveTree(trees []ChristmasTree, removeIdx int) []ChristmasTree {
 }
 
 // SwapTrees attempts to swap two trees and returns true if valid AND no overlaps for involved trees
-// Note: This modifies the input slice directly, similar to C++ reference behavior
+// Note: This modifies the input slice directly.
 func SwapTrees(trees []ChristmasTree, i, j int) bool {
 	if i == j || i < 0 || j < 0 || i >= len(trees) || j >= len(trees) {
 		return false

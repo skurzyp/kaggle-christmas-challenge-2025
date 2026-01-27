@@ -59,10 +59,6 @@ func RunAdvancedSAPenalty(initialTrees []tree.ChristmasTree, config *Config) []t
 
 		accepted := false
 
-		// We'll calculate delta based on move type
-		// Global moves (like 5) require full recalculation.
-		// Local moves (0-4, 6, 10) can use incremental update.
-
 		// Variables to store undo info for single/pair moves
 		var undoIdx []int
 		var undoTrees []tree.ChristmasTree
